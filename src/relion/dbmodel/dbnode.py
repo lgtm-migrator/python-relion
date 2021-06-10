@@ -64,6 +64,8 @@ class DBNode(ProtoNode):
             )
             if pid is not None:
                 self._unsent[i].append(pid)
+                if pid in self._sent:
+                    self._sent.remove(pid)
 
     def _do_check(self, in_values):
         try:
