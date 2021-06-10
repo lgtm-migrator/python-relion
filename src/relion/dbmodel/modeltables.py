@@ -72,7 +72,10 @@ class Table:
                         self._tab[c][index] = kwargs.get(c)
 
         if modified:
-            return self._tab[self._primary_key][-1]
+            if prim_key_arg is None:
+                return kwargs.get(self._primary_key) or self._tab[self._primary_key][-1]
+            else:
+                return prim_key_arg
         else:
             return
 
