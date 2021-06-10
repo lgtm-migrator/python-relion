@@ -17,6 +17,10 @@ Class3DParticleClass = namedtuple(
         "estimated_resolution",
         "overall_fourier_completeness",
         "initial_model_num_particles",
+        "job",
+        "particle_picker_job",
+        "ini_model_job",
+        "batch_number",
     ],
 )
 
@@ -114,9 +118,20 @@ class Class3D(JobType):
         )
 
         try:
-            init_nodel_num_particles = self._get_init_model_num_particles(
-                jobdir, "job.star"
-            )
+            picker_jobdir, batch_number = self._get_picker_job(jobdir)
+        except (RuntimeError, FileNotFoundError):
+            if self._needs_picker:
+                logger.debug(f"_get_picker_job failed for Class3D {jobdir}")
+                return []
+            else:
+                picker_jobdir = None
+                batch_number = None
+
+        try:
+            (
+                init_nodel_num_particles,
+                ini_model_jobdir,
+            ) = self._get_init_model_num_particles(jobdir, "job.star")
         except (RuntimeError, FileNotFoundError):
             logger.debug(f"Encountered error trying to read {jobdir}/job.star")
             return []
@@ -134,6 +149,10 @@ class Class3D(JobType):
                         estimated_resolution[j],
                         overall_fourier_completeness[j],
                         init_nodel_num_particles,
+                        jobdir,
+                        picker_jobdir,
+                        ini_model_jobdir,
+                        batch_number,
                     )
                 )
         except IndexError:
@@ -190,6 +209,98 @@ class Class3D(JobType):
         ).count(str(int(model_file_class)))
         return num_particles_in_class
 
+    def _get_picker_job(self, jobdir):
+        paramfile = self._read_star_file(jobdir, "job.star")
+        info_table = self._find_table_from_column_name(
+            "_rlnJobOptionVariable", paramfile
+        )
+        if info_table is None:
+            logger.debug(
+                f"Did not find _rlnJobOptionVariable column in {jobdir}/job.star"
+            )
+            return ""
+        variables = self.parse_star_file("_rlnJobOptionVariable", paramfile, info_table)
+        particle_file_index = variables.index("fn_img")
+        particle_file_name = self.parse_star_file(
+            "_rlnJobOptionValue", paramfile, info_table
+        )[particle_file_index]
+        batch_number = particle_file_name.split("split")[-1].split(".")[0]
+        if "Select" in particle_file_name:
+            particle_file_parts = particle_file_name.split("/")
+            parent_dir = particle_file_parts[0] + "/" + particle_file_parts[1]
+            select_job_file = self._read_star_file_from_proj_dir(parent_dir, "job.star")
+            info_table = self._find_table_from_column_name(
+                "_rlnJobOptionVariable", select_job_file
+            )
+            if info_table is None:
+                logger.debug(
+                    f"Did not find _rlnJobOptionVariable column in {parent_dir}/job.star"
+                )
+                return ""
+            variables = self.parse_star_file(
+                "_rlnJobOptionVariable", select_job_file, info_table
+            )
+            extract_file_index = variables.index("fn_data")
+            extract_file_name = self.parse_star_file(
+                "_rlnJobOptionValue", select_job_file, info_table
+            )[extract_file_index]
+            if extract_file_name == '""':
+                class2d_file_index = variables.index("fn_model")
+                class2d_file_name = self.parse_star_file(
+                    "_rlnJobOptionValue", select_job_file, info_table
+                )[class2d_file_index]
+                if "Class2D" not in class2d_file_name:
+                    logger.debug(
+                        f"Did not find reference to Class2D job in Select job job.star"
+                    )
+                    return ""
+                class2d_file_parts = class2d_file_name.split("/")
+                parent_dir = class2d_file_parts[0] + "/" + class2d_file_parts[1]
+                class2d_job_file = self._read_star_file_from_proj_dir(
+                    parent_dir, "job.star"
+                )
+                info_table = self._find_table_from_column_name(
+                    "_rlnJobOptionVariable", class2d_job_file
+                )
+                if info_table is None:
+                    logger.debug(
+                        f"Did not find _rlnJobOptionVariable column in {parent_dir}/job.star"
+                    )
+                    return ""
+                variables = self.parse_star_file(
+                    "_rlnJobOptionVariable", class2d_job_file, info_table
+                )
+                extract_file_index = variables.index("fn_img")
+                extract_file_name = self.parse_star_file(
+                    "_rlnJobOptionValue", class2d_job_file, info_table
+                )[extract_file_index]
+        elif "Extract" in particle_file_name:
+            extract_file_name = particle_file_name
+        else:
+            logger.debug(
+                f"Did not find reference to Select or Extract job in {jobdir}/job.star"
+            )
+            return ""
+        extract_file_parts = extract_file_name.split("/")
+        parent_dir = extract_file_parts[0] + "/" + extract_file_parts[1]
+        extract_job_file = self._read_star_file_from_proj_dir(parent_dir, "job.star")
+        info_table = self._find_table_from_column_name(
+            "_rlnJobOptionVariable", extract_job_file
+        )
+        if info_table is None:
+            logger.debug(
+                f"Did not find _rlnJobOptionVariable column in {parent_dir}/job.star"
+            )
+            return ""
+        variables = self.parse_star_file(
+            "_rlnJobOptionVariable", extract_job_file, info_table
+        )
+        picker_file_index = variables.index("coords_suffix")
+        picker_file_name = self.parse_star_file(
+            "_rlnJobOptionValue", extract_job_file, info_table
+        )[picker_file_index]
+        return picker_file_name.split("/")[1], batch_number
+
     def _final_data_and_model(self, job_path):
         number_list = [
             entry.stem[6:9]
@@ -226,3 +337,26 @@ class Class3D(JobType):
     def _sum_all_particles(self, list):
         counted = self._count_all(list)
         return counted
+
+    @staticmethod
+    def db_unpack(particle_class):
+        res = []
+        for cl in particle_class:
+            res.append(
+                {
+                    "type": "3D",
+                    "job_string": cl.job,
+                    "parpick_job_string": cl.particle_picker_job,
+                    "class_number": cl.particle_sum[0],
+                    "particles_per_class": cl.particle_sum[1],
+                    "rotation_accuracy": cl.accuracy_rotations,
+                    "translation_accuracy": cl.accuracy_translations_angst,
+                    "estimated_resolution": cl.estimated_resolution,
+                    "overall_fourier_completeness": cl.overall_fourier_completeness,
+                    "number_of_particles": cl.initial_model_num_particles,
+                    "job_string": cl.job,
+                    "ini_model_job_string": cl.ini_model_job,
+                    "batch_number": cl.batch_number,
+                }
+            )
+        return res
