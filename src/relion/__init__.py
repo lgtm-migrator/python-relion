@@ -17,6 +17,10 @@ from relion._parser.relion_pipeline import RelionPipeline
 import time
 import copy
 import os
+from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
+from relion.protonode.protograph import ProtoGraph
+from relion.dbmodel import DBModel
+from relion.dbmodel.modeltables import construct_message
 
 __all__ = []
 __author__ = "Diamond Light Source - Scientific Software"
@@ -51,7 +55,7 @@ class Project(RelionPipeline):
     a structured, object-oriented, and pythonic fashion.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, database="ISPyB", run_options=None):
         """
         Create an object representing a Relion project.
         :param path: A string or file system path object pointing to the root
@@ -63,6 +67,11 @@ class Project(RelionPipeline):
         )
         if not self.basepath.is_dir():
             raise ValueError(f"path {self.basepath} is not a directory")
+        self._data_pipeline = ProtoGraph("DataPipeline", [])
+        self._db_model = DBModel(database)
+        self._drift_cache = {}
+        if run_options is None:
+            self.run_options = RelionItOptions()
         try:
             self.load()
         except (FileNotFoundError, RuntimeError):
@@ -71,7 +80,6 @@ class Project(RelionPipeline):
             #    f"Relion Project was unable to load the relion pipeline from {self.basepath}/default_pipeline.star"
             # )
         self.res = RelionResults()
-        self._drift_cache = {}
 
     @property
     def _plock(self):
@@ -161,6 +169,39 @@ class Project(RelionPipeline):
         self.collect_job_times(
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
+        for jobnode in self:
+            if self._results_dict.get(jobnode.name):
+                jobnode.attributes["result"] = self._results_dict[jobnode.name]
+                jobnode.environment["extra_options"] = self.run_options
+                self._db_model[jobnode.name].environment[
+                    "extra_options"
+                ] = self.run_options
+                self._db_model[jobnode.name].environment[
+                    "message_constructor"
+                ] = construct_message
+                jobnode.link_to(self._db_model[jobnode.name], result_as_traffic=True)
+                self._data_pipeline.add_node(jobnode)
+                self._data_pipeline.add_node(self._db_model[jobnode.name])
+            elif "crYOLO" in jobnode.attributes.get("alias"):
+                jobnode.attributes["result"] = self._results_dict[
+                    f"{jobnode._path}:crYOLO"
+                ]
+                jobnode.environment["extra_options"] = self.run_options
+                self._db_model[f"{jobnode._path}:crYOLO"].environment[
+                    "extra_options"
+                ] = self.run_options
+                self._db_model[f"{jobnode._path}:crYOLO"].environment[
+                    "message_constructor"
+                ] = construct_message
+                jobnode.link_to(
+                    self._db_model[f"{jobnode._path}:crYOLO"], result_as_traffic=True
+                )
+                self._data_pipeline.add_node(jobnode)
+                self._data_pipeline.add_node(self._db_model[f"{jobnode._path}:crYOLO"])
+            else:
+                self._data_pipeline.add_node(jobnode)
+                if jobnode.name == "Import":
+                    self._data_pipeline.origins = [jobnode]
 
     def show_job_nodes(self):
         self.load()
@@ -169,6 +210,14 @@ class Project(RelionPipeline):
     @property
     def schedule_files(self):
         return self.basepath.glob("pipeline*.log")
+
+    @property
+    def messages(self):
+        msgs = []
+        results = self._data_pipeline()
+        for node in self._db_model.values():
+            msgs.extend(results[node.name + "-" + node.nodeid])
+        return msgs
 
     @property
     def results(self):

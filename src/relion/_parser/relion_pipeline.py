@@ -15,13 +15,15 @@ from relion._parser.processgraph import ProcessGraph
 
 
 class RelionPipeline:
-    def __init__(self, origin, graphin=ProcessGraph([]), locklist=None):
+    def __init__(
+        self, origin, graphin=ProcessGraph("RelionPipeline", []), locklist=None
+    ):
         self.origin = origin
         self._nodes = graphin
         self._connected = {}
         self.origins = {}
-        self._job_nodes = ProcessGraph([])
-        self._jobtype_nodes = ProcessGraph([])
+        self._job_nodes = ProcessGraph("JobNodes", [])
+        self._jobtype_nodes = ProcessGraph("JobTypeNodes", [])
         self._connected_jobs = {}
         self.job_origins = {}
         self._jobs_collapsed = False
@@ -65,21 +67,23 @@ class RelionPipeline:
 
     def _load_file_nodes_from_star(self, star_doc):
         return ProcessGraph(
+            "FileNodesFromStar",
             [
                 ProcessNode(pathlib.Path(p))
                 for p in self._request_star_values(star_doc, "_rlnPipeLineNodeName")
-            ]
+            ],
         )
 
     def _load_job_nodes_from_star(self, star_doc):
         return ProcessGraph(
+            "JobNodesFromStar",
             [
                 ProcessNode(pathlib.Path(p), alias=al)
                 for p, al in zip(
                     self._request_star_values(star_doc, "_rlnPipeLineProcessName"),
                     self._request_star_values(star_doc, "_rlnPipeLineProcessAlias"),
                 )
-            ]
+            ],
         )
 
     def load_nodes_from_star(self, star_path):
@@ -170,15 +174,16 @@ class RelionPipeline:
     def _collapse_jobs_to_jobtypes(self):
         ordered_graph = []
         if len(self._nodes) == 0:
-            self._jobtype_nodes = ProcessGraph([])
+            self._jobtype_nodes = ProcessGraph("JobTypeNodes", [])
             return
         self._job_nodes.node_explore(
             self._job_nodes[self._job_nodes.index(self.origin)], ordered_graph
         )
-        self._jobtype_nodes = ProcessGraph(copy.deepcopy(ordered_graph))
+        self._jobtype_nodes = ProcessGraph("JobTypeNodes", copy.deepcopy(ordered_graph))
         for node in self._jobtype_nodes:
             node.attributes["job"] = node._path.name
             node._path = node._path.parent
+            node._name = str(node._path)
         self._jobs_collapsed = True
 
     def show_all_nodes(self):
