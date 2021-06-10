@@ -1,20 +1,18 @@
 import pathlib
-import functools
+from datetime import datetime
+from relion.protonode.protonode import ProtoNode
 
 
-@functools.total_ordering
-class ProcessNode:
+class ProcessNode(ProtoNode):
     def __init__(self, path, **kwargs):
+        super().__init__(str(path), **kwargs)
         self._path = pathlib.PurePosixPath(path)
-        self._out = []
-        self.attributes = {}
-        for key, value in kwargs.items():
-            self.attributes[key] = value
         self.attributes["status"] = kwargs.get("status")
         self.attributes["start_time_stamp"] = kwargs.get("start_time_stamp")
         self.attributes["end_time_stamp"] = kwargs.get("end_time_stamp")
         self.attributes["start_time"] = kwargs.get("start_time")
         self.attributes["end_time"] = kwargs.get("end_time")
+        self.db_node = None
 
     def __eq__(self, other):
         if isinstance(other, ProcessNode):
@@ -31,46 +29,59 @@ class ProcessNode:
         return False
 
     def __hash__(self):
-        return hash(("relion._parser.pipeline.ProcessNode", self._path))
+        return hash(("relion._parser.ProcessNode", self._path))
 
-    def __repr__(self):
-        return f"Node({repr(str(self._path))})"
-
-    def __iter__(self):
-        return iter(self._out)
-
-    def __len__(self):
-        return len(self._out)
-
-    def __lt__(self, other):
-        if self._is_child(other):
-            return True
-        return False
-
-    @property
-    def name(self):
-        return str(self._path)
+    def __call__(self, **kwargs):
+        super().__call__()
+        if self.attributes.get("result") is None:
+            return
+        if self.attributes.get("results_last_collected") is None:
+            if self.attributes["end_time_stamp"] is None:
+                return []
+            self.attributes["results_last_collected"] = datetime.timestamp(
+                self.attributes["end_time_stamp"]
+            )
+            self.attributes["db_results"] = [
+                {
+                    **r,
+                    **{
+                        "end_time": datetime.timestamp(
+                            self.attributes["end_time_stamp"]
+                        )
+                    },
+                    **kwargs,
+                }
+                for r in self.attributes["result"].db_unpack(
+                    self.attributes["result"][self.attributes["job"]]
+                )
+            ]
+            return self.attributes["db_results"]
+        elif self.attributes["results_last_collected"] < datetime.timestamp(
+            self.attributes["end_time_stamp"]
+        ):
+            self.attributes["results_last_collected"] = datetime.timestamp(
+                self.attributes["end_time_stamp"]
+            )
+            self.attributes["db_results"] = [
+                {
+                    **r,
+                    **{
+                        "end_time": datetime.timestamp(
+                            self.attributes["end_time_stamp"]
+                        )
+                    },
+                    **kwargs,
+                }
+                for r in self.attributes["result"].db_unpack(
+                    self.attributes["result"][self.attributes["job"]]
+                )
+            ]
+            return self.attributes["db_results"]
+        self.attributes["db_results"] = [
+            {"end_time": datetime.timestamp(self.attributes["end_time_stamp"])}
+        ]
+        return self.attributes["db_results"]
 
     def change_name(self, new_name):
         self._path = new_name
-
-    def link_to(self, next_node):
-        if next_node not in self._out:
-            self._out.append(next_node)
-
-    def unlink_from(self, next_node):
-        if next_node in self._out:
-            self._out.remove(next_node)
-
-    def _is_child_checker(self, possible_child, checks):
-        if self == possible_child:
-            checks.extend([True])
-        for child in self:
-            checks.extend(child._is_child_checker(possible_child, checks=checks))
-        return checks
-
-    def _is_child(self, possible_child):
-        if True in self._is_child_checker(possible_child, checks=[]):
-            return True
-        else:
-            return False
+        self._name = str(new_name)
