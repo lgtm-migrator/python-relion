@@ -72,8 +72,20 @@ class Cryolo(JobType):
             "_rlnMicrographName", ctffile, info_table
         )[0]
 
-        return [ParticlePickerInfo(num_particles, micrograph_name)]
+        return [ParticlePickerInfo(num_particles, micrograph_name, jobdir)]
 
     @staticmethod
     def for_cache(partpickinfo):
         return str(partpickinfo.number_of_particles)
+
+    @staticmethod
+    def db_unpack(partpickinfo):
+        res = [
+            {
+                "number_of_particles": pi.number_of_particles,
+                "job_string": pi.job,
+                "micrograph_full_path": pi.first_micrograph_name,
+            }
+            for pi in partpickinfo
+        ]
+        return res
