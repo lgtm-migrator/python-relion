@@ -56,7 +56,7 @@ def remove_corrected_star_slice(corrected_star_path, required_slice):
 
 
 def test_basic_Project_object_behaviour(tmp_path, empty_options):
-    rp1 = relion.Project(tmp_path)
+    rp1 = relion.Project(tmp_path, run_options=empty_options)
     assert rp1
     assert str(tmp_path) in str(rp1)
     assert tmp_path.name in repr(rp1)
@@ -75,7 +75,7 @@ def test_basic_Project_object_behaviour(tmp_path, empty_options):
 
 def test_create_Project_on_inaccessible_path_fails(tmp_path):
     with pytest.raises(ValueError):
-        relion.Project(tmp_path / "does_not_exist")
+        relion.Project(tmp_path / "does_not_exist", run_options=empty_options)
 
 
 def test_Project_schedule_files_property_contains_the_correct_files(dials_data, proj):
