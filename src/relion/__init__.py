@@ -206,6 +206,8 @@ class Project(RelionPipeline):
     def messages(self):
         msgs = []
         results = self._data_pipeline()
+        if results is None:
+            return msgs
         for node in self._db_model.values():
             msgs.extend(results[node.name + "-" + node.nodeid])
         return msgs

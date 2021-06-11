@@ -26,7 +26,7 @@ def node_with_links(next_node_01, next_node_02):
 @pytest.fixture
 def graph(node_with_links, next_node_01, next_node_02):
     node_links = [node_with_links, next_node_01, next_node_02]
-    return ProcessGraph(node_links)
+    return ProcessGraph("LinkedGraph", node_links)
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def overlapping_graph():
     next_node = ProcessNode("Project/External/job004")
     node.link_to(next_node)
     node_links = [node, next_node]
-    return ProcessGraph(node_links)
+    return ProcessGraph("OverlappingGraph", node_links)
 
 
 @pytest.fixture
@@ -44,14 +44,14 @@ def new_origin_graph():
     next_node = ProcessNode("Project/CtfFind/job003")
     node.link_to(next_node)
     node_links = [node, next_node]
-    return ProcessGraph(node_links)
+    return ProcessGraph("NewOriginGraph", node_links)
 
 
 @pytest.fixture
 def no_link_graph(next_node_01, next_node_02):
     node = ProcessNode("Project/Import/job001")
     node_links = [node, next_node_01, next_node_02]
-    return ProcessGraph(node_links)
+    return ProcessGraph("NoLinkGraph", node_links)
 
 
 def test_process_graph_equality(graph, no_link_graph):
@@ -74,7 +74,7 @@ def test_process_graph_extend_behaves_like_a_list_extend(graph):
     external_node_01 = ProcessNode("Project/External/job004")
     external_node_02 = ProcessNode("Project/External/job005")
     old_node_list.extend([external_node_01, external_node_02])
-    graph.extend(ProcessGraph([external_node_01, external_node_02]))
+    graph.extend(ProcessGraph("NewGraph", [external_node_01, external_node_02]))
     assert graph._node_list == old_node_list
 
 
@@ -127,7 +127,7 @@ def test_process_graph_remove_node_and_check_links_still_work(
     node = ProcessNode("Project/Import/job001")
     node.link_to(next_node_01)
     node.link_to(next_node_02)
-    new_graph = ProcessGraph([node, next_node_01, next_node_02])
+    new_graph = ProcessGraph("NewGraph", [node, next_node_01, next_node_02])
     last_node = ProcessNode("Project/External/job004")
     new_graph.link_from_to(next_node_01, last_node)
     new_graph.add_node(last_node)
@@ -164,7 +164,7 @@ def test_process_graph_merge_with_common_origin(graph, overlapping_graph):
 def test_process_graph_merge_does_not_merge_if_merging_graph_is_not_connected_to_original_graph(
     graph,
 ):
-    new_graph = ProcessGraph([ProcessNode("Project/External/job005")])
+    new_graph = ProcessGraph("NewGraph", [ProcessNode("Project/External/job005")])
     merged = graph.merge(new_graph)
     assert not merged
 
@@ -176,11 +176,11 @@ def test_process_graph_split_connected(graph, new_origin_graph):
     graph.add_node(new_node)
     connected = graph.split_connected()
     assert len(connected) == 2
-    assert connected == [graph_snapshot, ProcessGraph([new_node])]
+    assert connected == [graph_snapshot, ProcessGraph("NewNode", [new_node])]
 
 
 def test_process_graph_split_connected_without_any_nodes():
-    empty_graph = ProcessGraph([])
+    empty_graph = ProcessGraph("Empty", [])
     connected = empty_graph.split_connected()
     assert len(connected) == 0
 
@@ -207,7 +207,3 @@ def test_process_graph_show_all_nodes(mock_Digraph, graph):
 def test_process_graph_wipe(graph):
     graph.wipe()
     assert len(graph) == 0
-
-
-def test_get_by_name(graph):
-    assert graph.get_by_name("Project/MotionCorr/job002") == graph[1]

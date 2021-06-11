@@ -137,7 +137,7 @@ class RelionPipeline:
             if str(f._path.parent.parent) == "InitialModel" and "class" in f._path.name:
                 self._nodes[self._nodes.index(f._path)].environment[
                     "init_model_class_num"
-                ] = int(f._path.stem.split("class")[-1])
+                ] = int(f._path.stem.split("class")[-1].split("_")[0])
                 self._nodes[self._nodes.index(f._path)].propagate(
                     ("init_model_class_num", "init_model_class_num")
                 )
