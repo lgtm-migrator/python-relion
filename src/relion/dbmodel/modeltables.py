@@ -1,5 +1,4 @@
 import functools
-from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
 
 # if we replace uuid with count do not include 0 in the count because it will break some bool checks for None
 
@@ -256,7 +255,7 @@ class CryoemInitialModelTable(Table):
 
 
 @functools.singledispatch
-def insert(primary_table, end_time, source, relion_options: RelionItOptions, **kwargs):
+def insert(primary_table, end_time, source, relion_options, **kwargs):
     raise ValueError(f"{primary_table!r} is not a known Table")
 
 
@@ -265,7 +264,7 @@ def _(
     primary_table: MotionCorrectionTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
@@ -287,7 +286,7 @@ def _(
     primary_table: CTFTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
@@ -313,7 +312,7 @@ def _(
     primary_table: ParticlePickerTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
@@ -339,7 +338,7 @@ def _(
     primary_table: ParticleClassificationGroupTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
@@ -361,7 +360,7 @@ def _(
     primary_table: ParticleClassificationTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
@@ -380,7 +379,7 @@ def _(
     primary_table: CryoemInitialModelTable,
     end_time,
     source,
-    relion_options: RelionItOptions,
+    relion_options,
     **kwargs,
 ):
     if (
