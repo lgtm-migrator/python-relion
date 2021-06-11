@@ -7,8 +7,13 @@ from gemmi import cif
 
 
 @pytest.fixture
+def empty_options():
+    return []
+
+
+@pytest.fixture
 def proj(dials_data):
-    return relion.Project(dials_data("relion_tutorial_data"))
+    return relion.Project(dials_data("relion_tutorial_data"), run_options=empty_options)
 
 
 def remove_corrected_star_slice(corrected_star_path, required_slice):

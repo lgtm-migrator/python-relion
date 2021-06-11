@@ -16,7 +16,11 @@ from relion._parser.class3D import Class3D
 from relion._parser.relion_pipeline import RelionPipeline
 import time
 import os
-from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
+
+try:
+    from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
+except ModuleNotFoundError:
+    pass
 from relion.protonode.protograph import ProtoGraph
 from relion.dbmodel import DBModel
 from relion.dbmodel.modeltables import construct_message
@@ -53,6 +57,8 @@ class Project(RelionPipeline):
         self._drift_cache = {}
         if run_options is None:
             self.run_options = RelionItOptions()
+        else:
+            self.run_options = run_options
         try:
             self.load()
         except (FileNotFoundError, RuntimeError):
