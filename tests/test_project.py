@@ -12,7 +12,7 @@ def empty_options():
 
 
 @pytest.fixture
-def proj(dials_data):
+def proj(dials_data, empty_options):
     return relion.Project(dials_data("relion_tutorial_data"), run_options=empty_options)
 
 
@@ -55,13 +55,13 @@ def remove_corrected_star_slice(corrected_star_path, required_slice):
     return new_star_doc
 
 
-def test_basic_Project_object_behaviour(tmp_path):
+def test_basic_Project_object_behaviour(tmp_path, empty_options):
     rp1 = relion.Project(tmp_path)
     assert rp1
     assert str(tmp_path) in str(rp1)
     assert tmp_path.name in repr(rp1)
 
-    rp2 = relion.Project(str(tmp_path))
+    rp2 = relion.Project(str(tmp_path), run_options=empty_options)
     assert rp2
     assert str(rp1) == str(rp2)
     assert repr(rp1) == repr(rp2)
@@ -97,8 +97,8 @@ def test_Project_schedule_files_property_contains_the_correct_files(dials_data, 
     )
 
 
-def test_results_collection_does_not_crash_for_an_empty_project():
-    proj = relion.Project("./")
+def test_results_collection_does_not_crash_for_an_empty_project(empty_options):
+    proj = relion.Project("./", run_options=empty_options)
     results = proj.messages
     assert results == []
 

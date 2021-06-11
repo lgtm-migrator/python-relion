@@ -10,7 +10,7 @@ def empty_options():
 
 
 @pytest.fixture
-def proj(dials_data):
+def proj(dials_data, empty_options):
     return relion.Project(dials_data("relion_tutorial_data"), run_options=empty_options)
 
 
@@ -20,8 +20,8 @@ def input(proj):
 
 
 @pytest.fixture
-def invalid_input(dials_data):
-    return relion.Project(dials_data("relion_tutorial_data"))
+def invalid_input(dials_data, empty_options):
+    return relion.Project(dials_data("relion_tutorial_data"), run_options=empty_options)
 
 
 def test_result_of_casting_to_string(input, proj):
