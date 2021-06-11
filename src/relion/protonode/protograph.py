@@ -55,6 +55,9 @@ class ProtoGraph(ProtoNode):
             for i_node in node._in:
                 if i_node not in self._node_list:
                     i_node.link_to(self)
+                    i_node._link_traffic[(self.name, self.nodeid)].update(
+                        i_node._link_traffic[(node.name, node.nodeid)]
+                    )
 
     def extend(self, other):
         if not isinstance(other, ProtoGraph):
@@ -134,7 +137,13 @@ class ProtoGraph(ProtoNode):
             called = True
             if traffic == {} and isinstance(node._delayed_traffic, dict):
                 self._call_returns[node.name + "-" + node.nodeid] = node(
-                    **{**self.environment, **node.environment, **node._delayed_traffic}
+                    **{
+                        **self.environment,
+                        **node.environment,
+                        **node._delayed_traffic,
+                        **self._propagate,
+                        **node._propagate,
+                    }
                 )
             elif isinstance(traffic, dict) and isinstance(node._delayed_traffic, dict):
                 for key, value in traffic.items():
@@ -145,6 +154,8 @@ class ProtoGraph(ProtoNode):
                         **node.environment,
                         **traffic,
                         **node._delayed_traffic,
+                        **self._propagate,
+                        **node._propagate,
                     }
                 )
             elif isinstance(traffic, list) and isinstance(node._delayed_traffic, dict):
@@ -159,6 +170,8 @@ class ProtoGraph(ProtoNode):
                                 **node.environment,
                                 **titem,
                                 **node._delayed_traffic,
+                                **self._propagate,
+                                **node._propagate,
                             }
                         )
                     )
@@ -174,6 +187,8 @@ class ProtoGraph(ProtoNode):
                                 **node.environment,
                                 **titem,
                                 **traffic,
+                                **self._propagate,
+                                **node._propagate,
                             }
                         )
                     )
@@ -189,6 +204,7 @@ class ProtoGraph(ProtoNode):
                 node._delayed_traffic = []
             node._delayed_traffic.extend(traffic)
         for next_node in node._out:
+            next_node._propagate.update(node._propagate)
             try:
                 next_traffic = node._link_traffic[(next_node.name, next_node.nodeid)]
             except KeyError:

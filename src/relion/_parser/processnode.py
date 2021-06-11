@@ -41,9 +41,26 @@ class ProcessNode(ProtoNode):
             self.attributes["results_last_collected"] = datetime.timestamp(
                 self.attributes["end_time_stamp"]
             )
-            self.attributes["db_results"] = [
-                {
-                    **r,
+            try:
+                self.attributes["db_results"] = [
+                    {
+                        **r,
+                        **{
+                            "end_time": datetime.timestamp(
+                                self.attributes["end_time_stamp"]
+                            )
+                        },
+                        **kwargs,
+                    }
+                    for r in self.attributes["result"].db_unpack(
+                        self.attributes["result"][self.attributes["job"]]
+                    )
+                ]
+            except TypeError:
+                self.attributes["db_results"] = {
+                    **self.attributes["result"].db_unpack(
+                        self.attributes["result"][self.attributes["job"]]
+                    ),
                     **{
                         "end_time": datetime.timestamp(
                             self.attributes["end_time_stamp"]
@@ -51,10 +68,7 @@ class ProcessNode(ProtoNode):
                     },
                     **kwargs,
                 }
-                for r in self.attributes["result"].db_unpack(
-                    self.attributes["result"][self.attributes["job"]]
-                )
-            ]
+
             return self.attributes["db_results"]
         elif self.attributes["results_last_collected"] < datetime.timestamp(
             self.attributes["end_time_stamp"]

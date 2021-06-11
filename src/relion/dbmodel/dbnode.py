@@ -69,26 +69,35 @@ class DBNode(ProtoNode):
 
     def _do_check(self, in_values):
         try:
-            if in_values.get(self.environment["check_for"]) is not None:
-                table = self.environment["foreign_table"]
-                check_for_foreign_name = self.environment.get("check_for_foreign_name")
+            if in_values.get(in_values["check_for"]) is not None:
+                # table = self.environment["foreign_table"]
+                # check_for_foreign_name = self.environment.get("check_for_foreign_name")
+                table = in_values["foreign_table"]
+                check_for_foreign_name = in_values.get("check_for_foreign_name")
                 if check_for_foreign_name is None:
-                    check_for_foreign_name = self.environment["check_for"]
+                    check_for_foreign_name = in_values["check_for"]
                 indices = table.get_row_index(
                     check_for_foreign_name,
-                    in_values.get(self.environment["check_for"]),
+                    # in_values.get(self.environment["check_for"]),
+                    in_values.get(in_values["check_for"]),
                 )
                 if indices is None:
                     return in_values
                 try:
-                    in_values[self.environment["foreign_key"]] = [
+                    # in_values[self.environment["foreign_key"]] = [
+                    #    table[table._primary_key][ci] for ci in indices
+                    # ]
+                    in_values[in_values["foreign_key"]] = [
                         table[table._primary_key][ci] for ci in indices
                     ]
                     return in_values
                 except TypeError:
-                    in_values[self.environment["foreign_key"]] = table[
-                        table._primary_key
-                    ][indices]
+                    # in_values[self.environment["foreign_key"]] = table[
+                    #    table._primary_key
+                    # ][indices]
+                    in_values[in_values["foreign_key"]] = table[table._primary_key][
+                        indices
+                    ]
                     return in_values
             else:
                 return in_values

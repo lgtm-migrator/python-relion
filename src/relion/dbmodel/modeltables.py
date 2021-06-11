@@ -388,6 +388,9 @@ def _(
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
+    kwargs["number_of_particles"] = kwargs["init_model_number_of_particles"][
+        kwargs["init_model_class_num"]
+    ]
     pid = primary_table.add_row(
         resolution=relion_options.inimodel_resol_final,
         **kwargs,

@@ -13,6 +13,7 @@ class ProtoNode:
         self.attributes = {}
         self.environment = {}
         self._link_traffic = {}
+        self._propagate = {}
         self._delayed_traffic = {}
         for key, value in kwargs.items():
             self.attributes[key] = value
@@ -60,17 +61,51 @@ class ProtoNode:
     def change_name(self, new_name):
         self._name = new_name
 
-    def link_to(self, next_node, traffic={}, block=True, result_as_traffic=False):
+    def link_to(
+        self, next_node, traffic=None, block=True, result_as_traffic=False, share=None
+    ):
         if next_node not in self._out:
             self._out.append(next_node)
             next_node._in.append(self)
-            if traffic != {}:
+            if traffic is None:
+                self._link_traffic[(next_node.name, next_node.nodeid)] = {}
+            else:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = traffic
             if not block:
                 for k, v in traffic.items():
                     next_node.environment[k] = v
             if result_as_traffic:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = None
+            if share is not None:
+                if isinstance(
+                    self._link_traffic[(next_node.name, next_node.nodeid)], dict
+                ):
+                    self._link_traffic[(next_node.name, next_node.nodeid)].update(
+                        {share[1]: self.environment.get(share[0])}
+                    )
+                elif isinstance(
+                    self._link_traffic[(next_node.name, next_node.nodeid)], list
+                ):
+                    for tr in self._link_traffic[(next_node.name, next_node.nodeid)]:
+                        tr.update({share[1]: self.environment.get(share[0])})
+
+    def share_with(self, node, share):
+        if self._link_traffic.get((node.name, node.nodeid)) is None:
+            print(
+                "Node not already linked or linked with result_as_traffic in share_with"
+            )
+            return
+        if isinstance(self._link_traffic[(node.name, node.nodeid)], dict):
+            self._link_traffic[(node.name, node.nodeid)].update(
+                {share[1]: self.environment.get(share[0])}
+            )
+        elif isinstance(self._link_traffic[(node.name, node.nodeid)], list):
+            for tr in self._link_traffic[(node.name, node.nodeid)]:
+                tr.update({share[1]: self.environment.get(share[0])})
+
+    def propagate(self, share):
+        for n in self._out:
+            n._propagate.update({share[1]: self.environment.get(share[0])})
 
     def unlink_from(self, next_node):
         if next_node in self._out:
