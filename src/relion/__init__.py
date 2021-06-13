@@ -162,7 +162,7 @@ class Project(RelionPipeline):
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
         for jobnode in self:
-            if self._results_dict.get(jobnode.name):
+            if self._results_dict.get(jobnode.name) and jobnode.name != "InitialModel":
                 jobnode.attributes["result"] = self._results_dict[jobnode.name]
                 jobnode.environment["extra_options"] = self.run_options
                 self._db_model[jobnode.name].environment[
@@ -176,8 +176,11 @@ class Project(RelionPipeline):
                 self._data_pipeline.add_node(self._db_model[jobnode.name])
                 if jobnode.name == "AutoPick":
                     jobnode.propagate(("job_string", "parpick_job_string"))
-                if jobnode.name == "InitialModel":
-                    jobnode.propagate(("job_string", "ini_model_job_string"))
+            elif jobnode.name == "InitialModel":
+                jobnode.attributes["result"] = self._results_dict[jobnode.name]
+                jobnode.link_to(self._db_model[jobnode.name], result_as_traffic=True)
+                self._data_pipeline.add_node(jobnode)
+                jobnode.propagate(("ini_model_job_string", "ini_model_job_string"))
             elif "crYOLO" in jobnode.attributes.get("alias"):
                 jobnode.attributes["result"] = self._results_dict[
                     f"{jobnode._path}:crYOLO"

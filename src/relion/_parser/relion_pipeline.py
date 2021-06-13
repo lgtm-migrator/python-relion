@@ -198,13 +198,18 @@ class RelionPipeline:
         self._jobtype_nodes = ProcessGraph("JobTypeNodes", copy.deepcopy(ordered_graph))
         for node in self._jobtype_nodes:
             node.attributes["job"] = node._path.name
-            node.environment["job_string"] = str(node._path.name)
+            # node.environment["job_string"] = str(node._path.name)
+            job_string = str(node._path.name)
             node._path = node._path.parent
             for inode in node._in:
                 inode._link_traffic[
                     (str(node._path), node.nodeid)
                 ] = inode._link_traffic[(node.name, node.nodeid)]
             node._name = str(node._path)
+            if node.name == "InitialModel":
+                node.environment["ini_model_job_string"] = job_string
+            else:
+                node.environment["job_string"] = job_string
 
         self._jobs_collapsed = True
 

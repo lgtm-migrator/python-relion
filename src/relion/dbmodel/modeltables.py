@@ -17,7 +17,7 @@ pid = ProcessID(1)
 
 
 class Table:
-    def __init__(self, columns, primary_key, unique=None, counters=None):
+    def __init__(self, columns, primary_key, unique=None, counters=None, append=None):
         self.columns = columns
         self._tab = {}
         for c in self.columns:
@@ -38,6 +38,12 @@ class Table:
                 self._counters = counters
         else:
             self._counters = counters
+        if append is None:
+            self._append = []
+        elif isinstance(append, list):
+            self._append = append
+        else:
+            self._append = [append]
 
     def __getitem__(self, key):
         return self._tab[key]
@@ -67,8 +73,29 @@ class Table:
             for c in self.columns:
                 if c != self._primary_key:
                     if self._tab[c][index] != kwargs.get(c):
-                        modified = True
-                        self._tab[c][index] = kwargs.get(c)
+                        if c in self._append:
+                            if isinstance(self._tab[c][index], list) and isinstance(
+                                kwargs.get(c), list
+                            ):
+                                for n in kwargs.get(c):
+                                    if n not in self._tab[c][index]:
+                                        modified = True
+                                        self._tab[c][index].append(n)
+                            elif isinstance(self._tab[c][index], list):
+                                if kwargs.get(c) not in self._tab[c][index]:
+                                    modified = True
+                                    self._tab[c][index].append(kwargs.get(c))
+                            elif isinstance(kwargs.get(c), list):
+                                self._tab[c][index] = [self._tab[c][index]]
+                                for n in kwargs.get(c):
+                                    if n not in self._tab[c][index]:
+                                        modified = True
+                                        self._tab[c][index].append(n)
+                                if len(self._tab[c][index]) == 1:
+                                    self._tab[c][index] = self._tab[c][index][0]
+                        else:
+                            modified = True
+                            self._tab[c][index] = kwargs.get(c)
 
         if modified:
             if prim_key_arg is None:
@@ -99,7 +126,7 @@ class Table:
                     for i2, ui2 in enumerate(unique_indices):
                         if i1 != i2:
                             if set(ui1).isdisjoint(ui2):
-                                break
+                                return
                 else:
                     overlap_list = unique_indices[0]
                     for i in range(len(unique_indices) - 1):
@@ -109,6 +136,8 @@ class Table:
                         overlap_list = list(
                             set(overlap_list).intersection(curr_overlap)
                         )
+                    if not overlap_list:
+                        return
                     return self._tab[self._primary_key][overlap_list[0]]
             return
         except TypeError:
@@ -250,7 +279,10 @@ class CryoemInitialModelTable(Table):
             "ini_model_job_string",
         ]
         super().__init__(
-            columns, "cryoem_initial_model_id", unique="ini_model_job_string"
+            columns,
+            "cryoem_initial_model_id",
+            unique="ini_model_job_string",
+            append="particle_classification_id",
         )
 
 

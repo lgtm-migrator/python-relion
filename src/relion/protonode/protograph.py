@@ -15,6 +15,7 @@ class ProtoGraph(ProtoNode):
         except IndexError:
             self.origins = []
         self._call_returns = {}
+        self._called_nodes = []
         self._traversed = []
         if auto_connect:
             self._check_connections()
@@ -45,6 +46,7 @@ class ProtoGraph(ProtoNode):
         self.traverse()
         self._traversed = []
         super().__call__()
+        self._called_nodes = []
         if self._call_returns == {}:
             return
         else:
@@ -133,7 +135,12 @@ class ProtoGraph(ProtoNode):
         called = False
         if node not in self._node_list:
             return
-        if all(n in node._completed for n in node._in):
+        if node.nodeid in self._called_nodes:
+            called = True
+        if (
+            all(n in node._completed for n in node._in)
+            and node.nodeid not in self._called_nodes
+        ):
             called = True
             if traffic == {} and isinstance(node._delayed_traffic, dict):
                 self._call_returns[node.name + "-" + node.nodeid] = node(
@@ -145,6 +152,7 @@ class ProtoGraph(ProtoNode):
                         **node._propagate,
                     }
                 )
+                self._called_nodes.append(node.nodeid)
             elif isinstance(traffic, dict) and isinstance(node._delayed_traffic, dict):
                 for key, value in traffic.items():
                     node.environment[key] = value
@@ -158,6 +166,7 @@ class ProtoGraph(ProtoNode):
                         **node._propagate,
                     }
                 )
+                self._called_nodes.append(node.nodeid)
             elif isinstance(traffic, list) and isinstance(node._delayed_traffic, dict):
                 self._call_returns[node.name + "-" + node.nodeid] = []
                 for titem in traffic:
@@ -175,6 +184,7 @@ class ProtoGraph(ProtoNode):
                             }
                         )
                     )
+                self._called_nodes.append(node.nodeid)
             elif isinstance(traffic, dict) and isinstance(node._delayed_traffic, list):
                 self._call_returns[node.name + "-" + node.nodeid] = []
                 for titem in node._delayed_traffic:
@@ -192,6 +202,7 @@ class ProtoGraph(ProtoNode):
                             }
                         )
                     )
+                self._called_nodes.append(node.nodeid)
         elif isinstance(traffic, dict):
             if isinstance(node._delayed_traffic, list):
                 node._delayed_traffic = [

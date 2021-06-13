@@ -15,6 +15,7 @@ class ProtoNode:
         self._link_traffic = {}
         self._propagate = {}
         self._delayed_traffic = {}
+        self._call_count = 0
         for key, value in kwargs.items():
             self.attributes[key] = value
 
@@ -53,6 +54,7 @@ class ProtoNode:
     def __call__(self, **kwargs):
         for node in self._out:
             node._completed.append(self)
+        self._call_count += 1
 
     @property
     def name(self):
