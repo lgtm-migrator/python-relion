@@ -12,6 +12,9 @@ class ProcessID:
         self.id += 1
         return old_id
 
+    def reset(self, start):
+        self.id = start
+
 
 pid = ProcessID(1)
 
@@ -37,7 +40,7 @@ class Table:
             else:
                 self._counters = counters
         else:
-            self._counters = counters
+            self._counters = []
         if append is None:
             self._append = []
         elif isinstance(append, list):
@@ -55,12 +58,17 @@ class Table:
         unique_check = self._unique_check(kwargs)
 
         prim_key_arg = unique_check or kwargs.get(self._primary_key)
-        if unique_check is None:
+        if unique_check is None or prim_key_arg not in self._tab[self._primary_key]:
             try:
                 for counter in self._counters:
                     kwargs[counter] = len(self._tab[counter]) + 1
             except TypeError:
                 pass
+        else:
+            for counter in self._counters:
+                index = self._tab[self._primary_key].index(prim_key_arg)
+                kwargs[counter] = self._tab[counter][index]
+
         if prim_key_arg is None or prim_key_arg not in self._tab[self._primary_key]:
             modified = True
             for c in self.columns:
@@ -93,6 +101,12 @@ class Table:
                                         self._tab[c][index].append(n)
                                 if len(self._tab[c][index]) == 1:
                                     self._tab[c][index] = self._tab[c][index][0]
+                            else:
+                                modified = True
+                                self._tab[c][index] = [
+                                    self._tab[c][index],
+                                    kwargs.get(c),
+                                ]
                         else:
                             modified = True
                             self._tab[c][index] = kwargs.get(c)

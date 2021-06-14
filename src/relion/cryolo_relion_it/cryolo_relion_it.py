@@ -546,7 +546,11 @@ import os
 import time
 import traceback
 import subprocess
-import grp
+
+try:
+    import grp
+except ModuleNotFoundError:
+    pass
 
 from . import cryolo_external_job
 
