@@ -19,6 +19,8 @@ class ProtoGraph(ProtoNode):
         self._traversed = []
         if auto_connect:
             self._check_connections()
+        for node in self._node_list:
+            node.environment["^tower^"] = self.environment
 
     def __eq__(self, other):
         if isinstance(other, ProtoGraph):
@@ -89,12 +91,23 @@ class ProtoGraph(ProtoNode):
                 for i_node in new_node._in:
                     if i_node not in self._node_list:
                         i_node.link_to(self)
+            new_node.environment["^tower^"] = self.environment
         else:
             raise ValueError("Attempted to add a node that was not a ProtoNode")
 
     def remove_node(self, node_name):
         behind_nodes = []
         for currnode in self:
+            if currnode.name == node_name:
+                for next_node in currnode:
+                    if next_node.environment.get(">propagate>") is None:
+                        next_node.environment[">propagate>"] = currnode.environment[
+                            ">propagate>"
+                        ]
+                    else:
+                        next_node.environment[">propagate>"].update(
+                            currnode.environment[">propagate>"]
+                        )
             if node_name in currnode:
                 behind_nodes.append(currnode)
                 currnode.unlink_from(node_name)
@@ -245,7 +258,7 @@ class ProtoGraph(ProtoNode):
                         for next_gnode in gnode:
                             digraph.edge(str(gnode.name), str(next_gnode.name))
                 else:
-                    digraph.node(name=str(node.name))
+                    digraph.node(name=str(node.name), shape=node.shape)
                 for next_node in node:
                     if next_node in self._node_list:
                         digraph.edge(str(node.name), str(next_node.name))

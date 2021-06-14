@@ -16,6 +16,7 @@ class ProtoNode:
         self._propagate = {}
         self._delayed_traffic = {}
         self._call_count = 0
+        self.shape = "oval"
         for key, value in kwargs.items():
             self.attributes[key] = value
 
@@ -55,6 +56,18 @@ class ProtoNode:
         for node in self._out:
             node._completed.append(self)
         self._call_count += 1
+
+    def __getitem__(self, key):
+        return self._scrape_env(self.environment, key)
+
+    def _scrape_env(self, env, key):
+        res = env.get(key)
+        if res is None:
+            if env.get(">propagate>") is not None:
+                res = env[">propagate>"].get(key)
+            if res is None and env.get("^tower^") is not None:
+                return self._scrape_env(env["^tower^"], key)
+        return res
 
     @property
     def name(self):
@@ -108,6 +121,12 @@ class ProtoNode:
     def propagate(self, share):
         for n in self._out:
             n._propagate.update({share[1]: self.environment.get(share[0])})
+        if self.environment.get(">propagate>") is None:
+            self.environment[">propagate>"] = {share[1]: self.environment.get(share[0])}
+        else:
+            self.environment[">propagate>"].update(
+                {share[1]: self.environment.get(share[0])}
+            )
 
     def unlink_from(self, next_node):
         if next_node in self._out:

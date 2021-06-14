@@ -5,6 +5,7 @@ from relion.protonode.protonode import ProtoNode
 class DBNode(ProtoNode):
     def __init__(self, name, tables, **kwargs):
         super().__init__(name, **kwargs)
+        self.shape = "polygon"
         if not isinstance(tables, list):
             raise TypeError(f"{self} could not be initialised: tables must be a list")
         self.tables = tables
