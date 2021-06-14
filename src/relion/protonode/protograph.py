@@ -255,6 +255,10 @@ class ProtoGraph(ProtoNode):
                 if isinstance(node, ProtoGraph):
                     digraph.node(name=str(node.name), shape="box")
                     for gnode in node._node_list:
+                        if isinstance(gnode, ProtoGraph):
+                            digraph.node(name=str(gnode.name), shape="box")
+                        else:
+                            digraph.node(name=str(gnode.name), shape=gnode.shape)
                         digraph.edge(str(node.name), str(gnode.name), style="dashed")
                         for next_gnode in gnode:
                             digraph.edge(str(gnode.name), str(next_gnode.name))
