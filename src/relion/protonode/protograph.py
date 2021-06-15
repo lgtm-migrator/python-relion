@@ -102,17 +102,6 @@ class ProtoGraph(ProtoNode):
     def remove_node(self, node_name):
         behind_nodes = []
         for currnode in self:
-            if currnode.name == node_name:
-                for next_node in currnode:
-                    if currnode.environment.get(">propagate>") is not None:
-                        if next_node.environment.get(">propagate>") is None:
-                            next_node.environment[">propagate>"] = currnode.environment[
-                                ">propagate>"
-                            ]
-                        else:
-                            next_node.environment[">propagate>"].update(
-                                currnode.environment[">propagate>"]
-                            )
             if node_name in currnode:
                 behind_nodes.append(currnode)
                 currnode.unlink_from(node_name)

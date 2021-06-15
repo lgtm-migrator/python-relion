@@ -69,8 +69,10 @@ def test_inserting_to_mc_table_through_dbnode(mc_db_node, proj):
     pid.reset(1)
     mc_res = proj.motioncorrection["job002"]
     mc_db_entries = proj.motioncorrection.db_unpack(mc_res)
-    for entry in mc_db_entries:
-        mc_db_node(**entry, end_time=100, extra_options=proj.run_options)
+    mc_db_node.environment["end_time"] = 100
+    mc_db_node.environment["extra_options"] = proj.run_options
+    mc_db_node.environment.update(mc_db_entries)
+    mc_db_node()
     first_row = mc_db_node.tables[0].get_row_by_primary_key(1)
     assert len(mc_db_node.tables[0]["motion_correction_id"]) == 24
     assert (
@@ -83,8 +85,10 @@ def test_inserting_to_ctf_table_through_dbnode(mc_db_node, ctf_db_node, proj):
     pid.reset(1)
     mc_res = proj.motioncorrection["job002"]
     mc_db_entries = proj.motioncorrection.db_unpack(mc_res)
-    for entry in mc_db_entries:
-        mc_db_node(**entry, end_time=100, extra_options=proj.run_options)
+    mc_db_node.environment["end_time"] = 100
+    mc_db_node.environment["extra_options"] = proj.run_options
+    mc_db_node.environment.update(mc_db_entries)
+    mc_db_node()
     ctf_res = proj.ctffind["job003"]
     ctf_db_entries = proj.ctffind.db_unpack(ctf_res)
     assert len(ctf_db_entries) == 24
@@ -95,16 +99,14 @@ def test_inserting_to_ctf_table_through_dbnode(mc_db_node, ctf_db_node, proj):
         )
         == 0
     )
-    for entry in ctf_db_entries:
-        ctf_db_node(
-            **entry,
-            end_time=100,
-            extra_options=proj.run_options,
-            check_for="micrograph_full_path",
-            foreign_key="motion_correction_id",
-            table_key="motion_correction_id",
-            foreign_table=mc_db_node.tables[0]
-        )
+    ctf_db_node.environment["end_time"] = 100
+    ctf_db_node.environment["extra_options"] = proj.run_options
+    ctf_db_node.environment["check_for"] = "micrograph_full_path"
+    ctf_db_node.environment["foreign_key"] = "motion_correction_id"
+    ctf_db_node.environment["table_key"] = "motion_correction_id"
+    ctf_db_node.environment["foreign_table"] = mc_db_node.tables[0]
+    ctf_db_node.environment.update(ctf_db_entries)
+    ctf_db_node()
     first_row = ctf_db_node.tables[0].get_row_by_primary_key(25)
     assert len(ctf_db_node.tables[0]["ctf_id"]) == 24
     assert first_row["motion_correction_id"] == 1
