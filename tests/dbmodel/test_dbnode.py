@@ -16,7 +16,7 @@ def mc_table(proj):
     mc_res = proj.motioncorrection["job002"]
     mc_db_entries = proj.motioncorrection.db_unpack(mc_res)
     for entry in mc_db_entries:
-        table.add_row(**entry)
+        table.add_row(entry)
     return table
 
 
@@ -26,7 +26,7 @@ def ctf_table(proj):
     ctf_res = proj.ctffind["job003"]
     ctf_db_entries = proj.ctffind.db_unpack(ctf_res)
     for i, entry in enumerate(ctf_db_entries):
-        table.add_row(**entry, motion_correction_id=i + 1)
+        table.add_row({**entry, **{"motion_correction_id": i + 1}})
     return table
 
 
