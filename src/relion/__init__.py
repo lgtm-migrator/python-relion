@@ -156,6 +156,7 @@ class Project(RelionPipeline):
 
     def load(self):
         self._jobs_collapsed = False
+        self._data_pipeline = ProtoGraph("DataPipeline", [])
         self.load_nodes_from_star(self.basepath / "default_pipeline.star")
         self.check_job_node_statuses(self.basepath)
         self.collect_job_times(
@@ -213,12 +214,14 @@ class Project(RelionPipeline):
 
     @property
     def messages(self):
+        self._clear_caches()
         msgs = []
         results = self._data_pipeline()
         if results is None:
             return msgs
         for node in self._db_model.values():
-            msgs.extend(results[node.name + "-" + node.nodeid])
+            if results[node.name + "-" + node.nodeid] is not None:
+                msgs.extend(results[node.name + "-" + node.nodeid])
         return msgs
 
     @property

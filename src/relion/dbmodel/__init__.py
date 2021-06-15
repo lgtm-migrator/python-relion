@@ -46,7 +46,6 @@ class DBModel(collections.abc.Mapping):
                 "table_key": "motion_correction_id",
                 "foreign_table": self.mc_db_node.tables[0],
             },
-            # block=False,
         )
 
         self.parpick_db_node = DBNode("ParticlePickerTable", [ParticlePickerTable()])
@@ -58,7 +57,6 @@ class DBModel(collections.abc.Mapping):
                 "table_key": "first_motion_correction_id",
                 "foreign_table": self.mc_db_node.tables[0],
             },
-            # block=False,
         )
 
         self.class_group_db_node = DBNode(
@@ -75,15 +73,16 @@ class DBModel(collections.abc.Mapping):
                 "check_for": "parpick_job_string",
                 "check_for_foreign_name": "job_string",
                 "foreign_key": "particle_picker_id",
+                "table_key": "particle_picker_id",
                 "foreign_table": self.parpick_db_node.tables[0],
             },
-            # block=False,
         )
         self.class_group_db_node.link_to(
             self.class_db_node,
             traffic={
                 "check_for": "job_string",
                 "foreign_key": "particle_classification_group_id",
+                "table_key": "particle_classification_group_id",
                 "foreign_table": self.class_group_db_node.tables[0],
             },
         )
@@ -102,6 +101,7 @@ class DBModel(collections.abc.Mapping):
             traffic={
                 "check_for": "job_string",
                 "foreign_key": "particle_classification_id",
+                "table_key": "particle_classification_id",
                 "foreign_table": self.class_db_node.tables[0],
             },
         )

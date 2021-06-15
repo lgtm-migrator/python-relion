@@ -31,8 +31,7 @@ class ProcessNode(ProtoNode):
     def __hash__(self):
         return hash(("relion._parser.ProcessNode", self._path))
 
-    def __call__(self, **kwargs):
-        super().__call__()
+    def func(self, *args, **kwargs):
         if self.attributes.get("result") is None:
             return
         if self.attributes.get("results_last_collected") is None:
@@ -50,7 +49,7 @@ class ProcessNode(ProtoNode):
                                 self.attributes["end_time_stamp"]
                             )
                         },
-                        **kwargs,
+                        **self.environment.dictionary(),
                     }
                     for r in self.attributes["result"].db_unpack(
                         self.attributes["result"][self.attributes["job"]]
@@ -66,7 +65,7 @@ class ProcessNode(ProtoNode):
                             self.attributes["end_time_stamp"]
                         )
                     },
-                    **kwargs,
+                    **self.environment.dictionary(),
                 }
 
             return self.attributes["db_results"]
@@ -84,7 +83,7 @@ class ProcessNode(ProtoNode):
                             self.attributes["end_time_stamp"]
                         )
                     },
-                    **kwargs,
+                    **self.environment.dictionary(),
                 }
                 for r in self.attributes["result"].db_unpack(
                     self.attributes["result"][self.attributes["job"]]

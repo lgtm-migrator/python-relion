@@ -1,5 +1,6 @@
 import functools
 import uuid
+from relion.protonode.environment import Environment
 
 
 @functools.total_ordering
@@ -11,7 +12,7 @@ class ProtoNode:
         self._in = []
         self._completed = []
         self.attributes = {}
-        self.environment = {}
+        self.environment = Environment()
         self._link_traffic = {}
         self._propagate = {}
         self._delayed_traffic = {}
@@ -52,10 +53,20 @@ class ProtoNode:
         if isinstance(other, ProtoNode):
             self.link_to(other)
 
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
+        res = []
+        incomplete = self.environment.step()
+        while incomplete:
+            res.append(self.func(*args, **kwargs))
+            incomplete = self.environment.step()
         for node in self._out:
             node._completed.append(self)
         self._call_count += 1
+        if len(res) == 0:
+            return
+        if len(res) == 1:
+            return res[0]
+        return res
 
     def __getitem__(self, key):
         return self._scrape_env(self.environment, key)
@@ -68,6 +79,9 @@ class ProtoNode:
             if res is None and env.get("^tower^") is not None:
                 return self._scrape_env(env["^tower^"], key)
         return res
+
+    def func(self, *args, **kwargs):
+        pass
 
     @property
     def name(self):
@@ -119,14 +133,7 @@ class ProtoNode:
                 tr.update({share[1]: self.environment.get(share[0])})
 
     def propagate(self, share):
-        for n in self._out:
-            n._propagate.update({share[1]: self.environment.get(share[0])})
-        if self.environment.get(">propagate>") is None:
-            self.environment[">propagate>"] = {share[1]: self.environment.get(share[0])}
-        else:
-            self.environment[">propagate>"].update(
-                {share[1]: self.environment.get(share[0])}
-            )
+        self.environment.propagate.update({share[1]: self.environment[share[0]]})
 
     def unlink_from(self, next_node):
         if next_node in self._out:

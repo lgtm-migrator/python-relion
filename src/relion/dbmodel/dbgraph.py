@@ -9,13 +9,6 @@ class DBGraph(ProtoGraph):
             for tab in n.tables:
                 tab._last_update[self.name] = 0
 
-    def __call__(self, **kwargs):
-        super().__call__(**kwargs)
-        msgs = []
-        for v in self._call_returns.values():
-            msgs.extend(v)
-        return msgs
-
     def update_times(self, source=None):
         times = []
         for n in self._node_list:

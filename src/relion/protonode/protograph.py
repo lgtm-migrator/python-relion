@@ -19,8 +19,6 @@ class ProtoGraph(ProtoNode):
         self._traversed = []
         if auto_connect:
             self._check_connections()
-        for node in self._node_list:
-            node.environment["^tower^"] = self.environment
 
     def __eq__(self, other):
         if isinstance(other, ProtoGraph):
@@ -42,13 +40,19 @@ class ProtoGraph(ProtoNode):
             raise ValueError("Index of ProtoGraph must be an integer")
         return self._node_list[index]
 
-    def __call__(self, **kwargs):
-        self.environment.update(kwargs)
+    def __call__(self, *args, **kwargs):
+        for node in self._node_list:
+            node.environment.set_escalate(self.environment)
+        res = super().__call__(*args, **kwargs)
+        return res
+
+    def func(self, *args, **kwargs):
         self._call_returns = {}
         self.traverse()
         self._traversed = []
-        super().__call__()
         self._called_nodes = []
+        for node in self._node_list:
+            node.environment.reset()
         if self._call_returns == {}:
             return
         else:
@@ -91,7 +95,7 @@ class ProtoGraph(ProtoNode):
                 for i_node in new_node._in:
                     if i_node not in self._node_list:
                         i_node.link_to(self)
-            new_node.environment["^tower^"] = self.environment
+            new_node.environment.set_escalate(self.environment)
         else:
             raise ValueError("Attempted to add a node that was not a ProtoNode")
 
@@ -156,80 +160,15 @@ class ProtoGraph(ProtoNode):
             and node.nodeid not in self._called_nodes
         ):
             called = True
-            if traffic == {} and isinstance(node._delayed_traffic, dict):
-                self._call_returns[node.name + "-" + node.nodeid] = node(
-                    **{
-                        **self.environment,
-                        **node.environment,
-                        **node._delayed_traffic,
-                        **self._propagate,
-                        **node._propagate,
-                    }
-                )
-                self._called_nodes.append(node.nodeid)
-            elif isinstance(traffic, dict) and isinstance(node._delayed_traffic, dict):
-                for key, value in traffic.items():
-                    node.environment[key] = value
-                self._call_returns[node.name + "-" + node.nodeid] = node(
-                    **{
-                        **self.environment,
-                        **node.environment,
-                        **traffic,
-                        **node._delayed_traffic,
-                        **self._propagate,
-                        **node._propagate,
-                    }
-                )
-                self._called_nodes.append(node.nodeid)
-            elif isinstance(traffic, list) and isinstance(node._delayed_traffic, dict):
-                self._call_returns[node.name + "-" + node.nodeid] = []
-                for titem in traffic:
-                    for key, value in titem.items():
-                        node.environment[key] = value
-                    self._call_returns[node.name + "-" + node.nodeid].append(
-                        node(
-                            **{
-                                **self.environment,
-                                **node.environment,
-                                **titem,
-                                **node._delayed_traffic,
-                                **self._propagate,
-                                **node._propagate,
-                            }
-                        )
-                    )
-                self._called_nodes.append(node.nodeid)
-            elif isinstance(traffic, dict) and isinstance(node._delayed_traffic, list):
-                self._call_returns[node.name + "-" + node.nodeid] = []
-                for titem in node._delayed_traffic:
-                    for key, value in titem.items():
-                        node.environment[key] = value
-                    self._call_returns[node.name + "-" + node.nodeid].append(
-                        node(
-                            **{
-                                **self.environment,
-                                **node.environment,
-                                **titem,
-                                **traffic,
-                                **self._propagate,
-                                **node._propagate,
-                            }
-                        )
-                    )
-                self._called_nodes.append(node.nodeid)
-        elif isinstance(traffic, dict):
-            if isinstance(node._delayed_traffic, list):
-                node._delayed_traffic = [
-                    {**r, **traffic} for r in node._delayed_traffic
-                ]
-            else:
-                node._delayed_traffic.update(traffic)
-        elif isinstance(traffic, list):
-            if isinstance(node._delayed_traffic, dict):
-                node._delayed_traffic = []
-            node._delayed_traffic.extend(traffic)
+
+            node.environment.update(traffic)
+            self._call_returns[node.name + "-" + node.nodeid] = node()
+
+        else:
+            node.environment.update(traffic)
+
         for next_node in node._out:
-            next_node._propagate.update(node._propagate)
+            next_node.environment.update_prop(node.environment.propagate)
             try:
                 next_traffic = node._link_traffic[(next_node.name, next_node.nodeid)]
             except KeyError:

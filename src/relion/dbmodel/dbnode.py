@@ -34,17 +34,11 @@ class DBNode(ProtoNode):
             return True
         return False
 
-    def __call__(self, **kwargs):
-        extra_options = kwargs.get("extra_options")
-        end_time = kwargs.get("end_time")
-        msg_con = kwargs.get("message_constructor")
-        newkwargs = {
-            x: kwargs[x]
-            for x in kwargs.keys()
-            if x != "extra_options" and x != "end_time" and x != "message_constructor"
-        }
-        self.insert(end_time, extra_options, **newkwargs)
-        super().__call__()
+    def func(self, *args, **kwargs):
+        extra_options = self.environment["extra_options"]
+        end_time = self.environment["end_time"]
+        msg_con = self.environment["message_constructor"]
+        self.insert(end_time, extra_options)
         return self.message(msg_con)
 
     def update_times(self, source=None):
@@ -55,57 +49,52 @@ class DBNode(ProtoNode):
                     all_times.append(tab._last_update[k])
         return [tab._last_update[source] for tab in self.tables]
 
-    def insert(self, end_time, extra_options, **kwargs):
-        source_option = kwargs.get("source")
+    def insert(self, end_time, extra_options):
+        for_removal = ["extra_options", "end_time", "message_constructor"]
+        source_option = self.environment["source"]
         if source_option is not None:
-            kwargs = {x: kwargs[x] for x in kwargs.keys() if x != "source"}
+            for_removal.append("source")
         for i, tab in enumerate(self.tables):
-            kwargs = self._do_check(kwargs)
+            self._do_check()
+
+            record = self.environment.dictionary(remove=for_removal)
 
             pid = modeltables.insert(
-                tab, end_time, source_option or self.name, extra_options, **kwargs
+                tab, end_time, source_option or self.name, extra_options, **record
             )
             if pid is not None:
                 self._unsent[i].append(pid)
                 if pid in self._sent:
                     self._sent.remove(pid)
 
-    def _do_check(self, in_values):
+    def _do_check(self):
         try:
-            if in_values.get(in_values["check_for"]) is not None:
-                # table = self.environment["foreign_table"]
-                # check_for_foreign_name = self.environment.get("check_for_foreign_name")
-                table = in_values["foreign_table"]
-                check_for_foreign_name = in_values.get("check_for_foreign_name")
+            if self.environment["check_for"] is not None:
+                table = self.environment["foreign_table"]
+                check_for_foreign_name = self.environment["check_for_foreign_name"]
                 if check_for_foreign_name is None:
-                    check_for_foreign_name = in_values["check_for"]
+                    check_for_foreign_name = self.environment["check_for"]
                 indices = table.get_row_index(
                     check_for_foreign_name,
-                    # in_values.get(self.environment["check_for"]),
-                    in_values.get(in_values["check_for"]),
+                    self.environment[self.environment["check_for"]],
                 )
                 if indices is None:
-                    return in_values
+                    self.environment[self.environment["table_key"]] = None
+                    return
                 try:
-                    # in_values[self.environment["foreign_key"]] = [
-                    #    table[table._primary_key][ci] for ci in indices
-                    # ]
-                    in_values[in_values["foreign_key"]] = [
+                    self.environment[self.environment["table_key"]] = [
                         table[table._primary_key][ci] for ci in indices
                     ]
-                    return in_values
+                    return
                 except TypeError:
-                    # in_values[self.environment["foreign_key"]] = table[
-                    #    table._primary_key
-                    # ][indices]
-                    in_values[in_values["foreign_key"]] = table[table._primary_key][
-                        indices
-                    ]
-                    return in_values
+                    self.environment[self.environment["table_key"]] = table[
+                        table._primary_key
+                    ][indices]
+                    return
             else:
-                return in_values
+                return
         except KeyError:
-            return in_values
+            return
 
     def message(self, constructor=None):
         if constructor is None:
