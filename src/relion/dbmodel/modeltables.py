@@ -20,7 +20,15 @@ pid = ProcessID(1)
 
 
 class Table:
-    def __init__(self, columns, primary_key, unique=None, counters=None, append=None):
+    def __init__(
+        self,
+        columns,
+        primary_key,
+        unique=None,
+        counters=None,
+        append=None,
+        required=None,
+    ):
         self.columns = columns
         self._tab = {}
         for c in self.columns:
@@ -47,55 +55,61 @@ class Table:
             self._append = append
         else:
             self._append = [append]
+        if required is None:
+            self._required = []
+        elif isinstance(required, list):
+            self._required = required
+        else:
+            self._required = [required]
 
     def __getitem__(self, key):
         return self._tab[key]
 
-    def add_row(self, **kwargs):
+    def add_row(self, row):
 
         modified = False
 
-        unique_check = self._unique_check(kwargs)
+        unique_check = self._unique_check(row)
 
-        prim_key_arg = unique_check or kwargs.get(self._primary_key)
+        prim_key_arg = unique_check or row.get(self._primary_key)
         if unique_check is None or prim_key_arg not in self._tab[self._primary_key]:
             try:
                 for counter in self._counters:
-                    kwargs[counter] = len(self._tab[counter]) + 1
+                    row[counter] = len(self._tab[counter]) + 1
             except TypeError:
                 pass
         else:
             for counter in self._counters:
                 index = self._tab[self._primary_key].index(prim_key_arg)
-                kwargs[counter] = self._tab[counter][index]
+                row[counter] = self._tab[counter][index]
 
         if prim_key_arg is None or prim_key_arg not in self._tab[self._primary_key]:
             modified = True
             for c in self.columns:
                 if c == self._primary_key:
-                    self._tab[c].append(kwargs.get(c) or pid())
+                    self._tab[c].append(row.get(c) or pid())
                 else:
-                    self._tab[c].append(kwargs.get(c))
+                    self._tab[c].append(row.get(c))
         else:
             index = self._tab[self._primary_key].index(prim_key_arg)
             for c in self.columns:
                 if c != self._primary_key:
-                    if self._tab[c][index] != kwargs.get(c):
+                    if self._tab[c][index] != row.get(c):
                         if c in self._append:
                             if isinstance(self._tab[c][index], list) and isinstance(
-                                kwargs.get(c), list
+                                row.get(c), list
                             ):
-                                for n in kwargs.get(c):
+                                for n in row.get(c):
                                     if n not in self._tab[c][index]:
                                         modified = True
                                         self._tab[c][index].append(n)
                             elif isinstance(self._tab[c][index], list):
-                                if kwargs.get(c) not in self._tab[c][index]:
+                                if row.get(c) not in self._tab[c][index]:
                                     modified = True
-                                    self._tab[c][index].append(kwargs.get(c))
-                            elif isinstance(kwargs.get(c), list):
+                                    self._tab[c][index].append(row.get(c))
+                            elif isinstance(row.get(c), list):
                                 self._tab[c][index] = [self._tab[c][index]]
-                                for n in kwargs.get(c):
+                                for n in row.get(c):
                                     if n not in self._tab[c][index]:
                                         modified = True
                                         self._tab[c][index].append(n)
@@ -105,15 +119,18 @@ class Table:
                                 modified = True
                                 self._tab[c][index] = [
                                     self._tab[c][index],
-                                    kwargs.get(c),
+                                    row.get(c),
                                 ]
                         else:
                             modified = True
-                            self._tab[c][index] = kwargs.get(c)
+                            self._tab[c][index] = row.get(c)
 
         if modified:
+            for req in self._required:
+                if row.get(req) is None:
+                    return
             if prim_key_arg is None:
-                return kwargs.get(self._primary_key) or self._tab[self._primary_key][-1]
+                return row.get(self._primary_key) or self._tab[self._primary_key][-1]
             else:
                 return prim_key_arg
         else:
@@ -227,7 +244,12 @@ class CTFTable(Table):
             "fft_theoretical_full_path",
             "comments",
         ]
-        super().__init__(columns, "ctf_id", unique="motion_correction_id")
+        super().__init__(
+            columns,
+            "ctf_id",
+            unique="motion_correction_id",
+            required="motion_correction_id",
+        )
 
 
 class ParticlePickerTable(Table):
@@ -311,19 +333,21 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    pid = primary_table.add_row(
-        dose_per_frame=relion_options.motioncor_doseperframe,
-        patches_used_x=relion_options.motioncor_patches_x,
-        patches_used_y=relion_options.motioncor_patches_y,
-        **kwargs,
+    row.update(
+        {
+            "dose_per_frame": relion_options.motioncor_doseperframe,
+            "patches_used_x": relion_options.motioncor_patches_x,
+            "patches_used_y": relion_options.motioncor_patches_y,
+        }
     )
+    pid = primary_table.add_row(row)
     return pid
 
 
@@ -333,23 +357,27 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    pid = primary_table.add_row(
-        box_size_x=relion_options.ctffind_boxsize,
-        box_size_y=relion_options.ctffind_boxsize,
-        min_resolution=relion_options.ctffind_minres,
-        max_resolution=relion_options.ctffind_maxres,
-        min_defocus=relion_options.ctffind_defocus_min,
-        max_defocus=relion_options.ctffind_defocus_max,
-        defocus_step_size=relion_options.ctffind_defocus_step,
-        **kwargs,
+
+    row.update(
+        {
+            "box_size_x": relion_options.ctffind_boxsize,
+            "box_size_y": relion_options.ctffind_boxsize,
+            "min_resolution": relion_options.ctffind_minres,
+            "max_resolution": relion_options.ctffind_maxres,
+            "min_defocus": relion_options.ctffind_defocus_min,
+            "max_defocus": relion_options.ctffind_defocus_max,
+            "defocus_step_size": relion_options.ctffind_defocus_step,
+        }
     )
+
+    pid = primary_table.add_row(row)
     return pid
 
 
@@ -359,23 +387,25 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    pid = primary_table.add_row(
-        particle_picking_template=relion_options.cryolo_gmodel,
-        particle_diameter=int(
-            relion_options.extract_boxsize
-            * relion_options.angpix
-            / relion_options.motioncor_binning
-        )
-        / 10,
-        **kwargs,
+    row.update(
+        {
+            "particle_picking_template": relion_options.cryolo_gmodel,
+            "particle_diameter": int(
+                relion_options.extract_boxsize
+                * relion_options.angpix
+                / relion_options.motioncor_binning
+            )
+            / 10,
+        }
     )
+    pid = primary_table.add_row(row)
     return pid
 
 
@@ -385,19 +415,21 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    pid = primary_table.add_row(
-        number_of_particles_per_batch=relion_options.batch_size,
-        number_of_classes_per_batch=relion_options.class2d_nr_classes,
-        symmetry=relion_options.symmetry,
-        **kwargs,
+    row.update(
+        {
+            "number_of_particles_per_batch": relion_options.batch_size,
+            "number_of_classes_per_batch": relion_options.class2d_nr_classes,
+            "symmetry": relion_options.symmetry,
+        }
     )
+    pid = primary_table.add_row(row)
     return pid
 
 
@@ -407,16 +439,14 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    pid = primary_table.add_row(
-        **kwargs,
-    )
+    pid = primary_table.add_row(row)
     return pid
 
 
@@ -426,20 +456,18 @@ def _(
     end_time,
     source,
     relion_options,
-    **kwargs,
+    row,
 ):
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
     ):
         primary_table._last_update[source] = end_time
-    kwargs["number_of_particles"] = kwargs["init_model_number_of_particles"][
-        kwargs["init_model_class_num"]
+    row["number_of_particles"] = row["init_model_number_of_particles"][
+        row["init_model_class_num"]
     ]
-    pid = primary_table.add_row(
-        resolution=relion_options.inimodel_resol_final,
-        **kwargs,
-    )
+    row.update({"resolution": relion_options.inimodel_resol_final})
+    pid = primary_table.add_row(row)
     return pid
 
 

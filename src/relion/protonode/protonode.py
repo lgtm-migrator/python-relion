@@ -14,6 +14,7 @@ class ProtoNode:
         self.attributes = {}
         self.environment = Environment()
         self._link_traffic = {}
+        self._share_traffic = {}
         self._propagate = {}
         self._delayed_traffic = {}
         self._call_count = 0
@@ -90,9 +91,7 @@ class ProtoNode:
     def change_name(self, new_name):
         self._name = new_name
 
-    def link_to(
-        self, next_node, traffic=None, block=True, result_as_traffic=False, share=None
-    ):
+    def link_to(self, next_node, traffic=None, result_as_traffic=False, share=None):
         if next_node not in self._out:
             self._out.append(next_node)
             next_node._in.append(self)
@@ -100,23 +99,10 @@ class ProtoNode:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = {}
             else:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = traffic
-            if not block:
-                for k, v in traffic.items():
-                    next_node.environment[k] = v
             if result_as_traffic:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = None
             if share is not None:
-                if isinstance(
-                    self._link_traffic[(next_node.name, next_node.nodeid)], dict
-                ):
-                    self._link_traffic[(next_node.name, next_node.nodeid)].update(
-                        {share[1]: self.environment.get(share[0])}
-                    )
-                elif isinstance(
-                    self._link_traffic[(next_node.name, next_node.nodeid)], list
-                ):
-                    for tr in self._link_traffic[(next_node.name, next_node.nodeid)]:
-                        tr.update({share[1]: self.environment.get(share[0])})
+                self._share_traffic[(next_node.name, next_node.nodeid)] = share
 
     def share_with(self, node, share):
         if self._link_traffic.get((node.name, node.nodeid)) is None:

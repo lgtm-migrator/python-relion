@@ -104,7 +104,6 @@ class ProtoGraph(ProtoNode):
         for currnode in self._node_list:
             if currnode.name == str(node_name):
                 if currnode.environment.propagate.released:
-                    print(f"removing {currnode}")
                     for next_node in currnode:
                         next_node.environment.update_prop(
                             currnode.environment.propagate.store
@@ -143,25 +142,26 @@ class ProtoGraph(ProtoNode):
 
     def traverse(self):
         for o in self.origins:
-            self._follow(o, traffic={})
+            self._follow(o, traffic={}, share=[])
 
-    def _follow(self, node, traffic):
+    def _follow(self, node, traffic, share):
         called = False
         if node not in self._node_list:
             return
         if node.nodeid in self._called_nodes:
             called = True
+        node.environment.update(traffic)
+
+        for sh in share:
+            node.environment[sh[1]] = sh[0]
+
         if (
             all(n in node._completed for n in node._in)
             and node.nodeid not in self._called_nodes
         ):
             called = True
 
-            node.environment.update(traffic)
             self._call_returns[node.name + "-" + node.nodeid] = node()
-
-        else:
-            node.environment.update(traffic)
 
         for next_node in node._out:
             next_node.environment.update_prop(node.environment.propagate)
@@ -171,6 +171,10 @@ class ProtoGraph(ProtoNode):
                 next_traffic = {}
             if next_traffic is None:
                 next_traffic = self._call_returns[node.name + "-" + node.nodeid]
+            next_share = []
+            if node._share_traffic.get((next_node.name, next_node.nodeid)) is not None:
+                for sh in node._share_traffic[(next_node.name, next_node.nodeid)]:
+                    next_share.append((node.environment[sh[0]], sh[1]))
             if (
                 (node.name, node.nodeid),
                 (next_node.name, next_node.nodeid),
@@ -178,9 +182,9 @@ class ProtoGraph(ProtoNode):
                 self._traversed.append(
                     ((node.name, node.nodeid), (next_node.name, next_node.nodeid))
                 )
-                self._follow(next_node, next_traffic)
+                self._follow(next_node, next_traffic, next_share)
             elif not called:
-                self._follow(next_node, next_traffic)
+                self._follow(next_node, next_traffic, next_share)
 
     def show(self):
         try:

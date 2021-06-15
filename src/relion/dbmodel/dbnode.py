@@ -50,17 +50,16 @@ class DBNode(ProtoNode):
         return [tab._last_update[source] for tab in self.tables]
 
     def insert(self, end_time, extra_options):
-        for_removal = ["extra_options", "end_time", "message_constructor"]
         source_option = self.environment["source"]
-        if source_option is not None:
-            for_removal.append("source")
         for i, tab in enumerate(self.tables):
             self._do_check()
 
-            record = self.environment.dictionary(remove=for_removal)
-
             pid = modeltables.insert(
-                tab, end_time, source_option or self.name, extra_options, **record
+                tab,
+                end_time,
+                source_option or self.name,
+                extra_options,
+                self.environment,
             )
             if pid is not None:
                 self._unsent[i].append(pid)

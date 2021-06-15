@@ -78,6 +78,9 @@ class Environment:
             self.reset()
             return False
 
+    def get(self, key):
+        return self[key]
+
     def update(self, traffic):
         if isinstance(traffic, dict):
             self.base.update(traffic)
@@ -101,38 +104,6 @@ class Environment:
 
     def reset(self):
         self.iterator = iter([{}])
-
-    # this only collects the environment from current level and one level above
-    def dictionary(self, remove=None):
-        res = {}
-        if remove is None:
-            remove = []
-        if self.escalate.released:
-            res.update(
-                {
-                    x: self.escalate.store.temp[x]
-                    for x in self.escalate.store.temp.keys()
-                    if x not in remove
-                }
-            )
-            res.update(
-                {
-                    x: self.escalate.store.base[x]
-                    for x in self.escalate.store.base.keys()
-                    if x not in remove
-                }
-            )
-        if self.propagate.released:
-            res.update(
-                {
-                    x: self.propagate.store[x]
-                    for x in self.propagate.store.keys()
-                    if x not in remove
-                }
-            )
-        res.update({x: self.temp[x] for x in self.temp.keys() if x not in remove})
-        res.update({x: self.base[x] for x in self.base.keys() if x not in remove})
-        return res
 
 
 @functools.singledispatch

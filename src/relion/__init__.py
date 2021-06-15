@@ -172,14 +172,22 @@ class Project(RelionPipeline):
                 self._db_model[jobnode.name].environment[
                     "message_constructor"
                 ] = construct_message
-                jobnode.link_to(self._db_model[jobnode.name], result_as_traffic=True)
+                jobnode.link_to(
+                    self._db_model[jobnode.name],
+                    result_as_traffic=True,
+                    share=[("end_time", "end_time")],
+                )
                 self._data_pipeline.add_node(jobnode)
                 self._data_pipeline.add_node(self._db_model[jobnode.name])
                 if jobnode.name == "AutoPick":
                     jobnode.propagate(("job_string", "parpick_job_string"))
             elif jobnode.name == "InitialModel":
                 jobnode.attributes["result"] = self._results_dict[jobnode.name]
-                jobnode.link_to(self._db_model[jobnode.name], result_as_traffic=True)
+                jobnode.link_to(
+                    self._db_model[jobnode.name],
+                    result_as_traffic=True,
+                    share=[("end_time", "end_time")],
+                )
                 self._data_pipeline.add_node(jobnode)
                 jobnode.propagate(("ini_model_job_string", "ini_model_job_string"))
             elif "crYOLO" in jobnode.attributes.get("alias"):
@@ -195,7 +203,9 @@ class Project(RelionPipeline):
                 ] = construct_message
                 jobnode.propagate(("job_string", "parpick_job_string"))
                 jobnode.link_to(
-                    self._db_model[f"{jobnode._path}:crYOLO"], result_as_traffic=True
+                    self._db_model[f"{jobnode._path}:crYOLO"],
+                    result_as_traffic=True,
+                    share=[("end_time", "end_time")],
                 )
                 self._data_pipeline.add_node(jobnode)
                 self._data_pipeline.add_node(self._db_model[f"{jobnode._path}:crYOLO"])
