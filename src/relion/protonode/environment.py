@@ -75,6 +75,7 @@ class Environment:
             self.temp = next(self.iterator)
             return True
         except StopIteration:
+            self.reset()
             return False
 
     def update(self, traffic):
@@ -82,7 +83,7 @@ class Environment:
             self.base.update(traffic)
             return
         elif isinstance(traffic, list):
-            if list(self.iterator) == [{}]:
+            if list(self.iterator) == [{}] or list(self.iterator) == []:
                 self.iterator = iter(traffic)
                 return
             if len(list(traffic)) != len(list(self.iterator)):
