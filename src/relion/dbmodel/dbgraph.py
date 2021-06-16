@@ -11,18 +11,15 @@ class DBGraph(ProtoGraph):
 
     def __call__(self, *args, **kwargs):
         res = super().__call__(*args, **kwargs)
-        # print(res)
         collapsed_res = []
         if isinstance(res, dict):
             for curr_res in res.values():
-                if curr_res is not None:
+                if curr_res is not None and curr_res not in collapsed_res:
                     collapsed_res.append(curr_res)
         elif isinstance(res, list):
             for el in res:
-                # print(el)
                 for curr_res in el.values():
-                    print(curr_res)
-                    if curr_res is not None:
+                    if curr_res is not None and curr_res not in collapsed_res:
                         collapsed_res.append(curr_res)
         return collapsed_res
 
