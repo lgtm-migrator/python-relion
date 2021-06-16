@@ -25,6 +25,10 @@ from relion.protonode.protograph import ProtoGraph
 from relion.dbmodel import DBModel
 from relion.dbmodel.modeltables import construct_message
 
+import logging
+
+logger = logging.getLogger("relion.Project")
+
 __all__ = []
 __author__ = "Diamond Light Source - Scientific Software"
 __email__ = "scientificsoftware@diamond.ac.uk"
@@ -230,8 +234,13 @@ class Project(RelionPipeline):
         if results is None:
             return msgs
         for node in self._db_model.values():
-            if results[node.name + "-" + node.nodeid] is not None:
-                msgs.append(results[node.name + "-" + node.nodeid])
+            try:
+                if results[node.name + "-" + node.nodeid] is not None:
+                    msgs.append(results[node.name + "-" + node.nodeid])
+            except KeyError:
+                logger.debug(
+                    f"No results found for {node.name}: probably the job has not completed yet"
+                )
         return msgs
 
     @property
