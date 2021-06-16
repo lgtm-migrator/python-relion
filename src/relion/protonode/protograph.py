@@ -53,6 +53,7 @@ class ProtoGraph(ProtoNode):
         self._called_nodes = []
         for node in self._node_list:
             node.environment.reset()
+            node._completed = []
         if self._call_returns == {}:
             return
         else:
@@ -162,6 +163,7 @@ class ProtoGraph(ProtoNode):
             called = True
 
             self._call_returns[node.name + "-" + node.nodeid] = node()
+            self._called_nodes.append(node.nodeid)
 
         for next_node in node._out:
             next_node.environment.update_prop(node.environment.propagate)
