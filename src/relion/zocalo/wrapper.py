@@ -1,6 +1,5 @@
 import datetime
 import enum
-import functools
 import logging
 import os
 import pathlib
@@ -11,7 +10,6 @@ import zocalo.util.symlink
 import zocalo.wrapper
 from pprint import pprint
 from relion.cryolo_relion_it import cryolo_relion_it, dls_options
-from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
 
 logger = logging.getLogger("relion.zocalo.wrapper")
 
@@ -129,12 +127,9 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
 
             relion_prj.load()
 
-            # Should only return results that have not previously been sent
-            for fr in relion_prj.results.fresh:
-                ispyb_command_list.extend(
-                    ispyb_results(fr.stage_object, fr.job_name, self.opts)
-                )
-                logger.info(f"Fresh results found for {fr.job_name}")
+            for job_msg in relion_prj.messages:
+                logger.info(f"Found results that look like this: {job_msg[0]}")
+                ispyb_command_list.extend(job_msg)
 
             if ispyb_command_list:
                 logger.info(
@@ -310,205 +305,3 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
 
     def create_synchweb_stop_file(self):
         pathlib.Path(self.params["stop_file"]).touch()
-
-    def get_status(self, job_path):
-        relion_stop_files = [
-            "RELION_JOB_EXIT_SUCCESS",
-            "RELION_EXIT_FAILURE",
-            "RELION_JOB_ABORT_NOW",
-            "RELION_EXIT_ABORTED",
-        ]
-        # synchweb_stop_files = [synchweb stop files list]
-        # job_finished_files = [relion job finished files]
-        for item in relion_stop_files:
-            if (job_path / item).is_file():  # or synchweb_stop_file exists:
-                return RelionStatus.SUCCESS
-            else:
-                return RelionStatus.RUNNING
-            # if job_finished_file exists:
-
-
-@functools.singledispatch
-def ispyb_results(
-    relion_stage_object, job_string: str, relion_options: RelionItOptions
-):
-    """
-    A function that takes Relion stage objects and job names (together
-    representing a single job directory) and translates them into ISPyB
-    service commands.
-    """
-    raise ValueError(f"{relion_stage_object!r} is not a known Relion object")
-
-
-@ispyb_results.register(relion.CTFFind)
-def _(stage_object: relion.CTFFind, job_string: str, relion_options: RelionItOptions):
-    logger.info("Generating ISPyB commands for %s ", job_string)
-    ispyb_command_list = []
-    for ctf_micrograph in stage_object[job_string]:
-        ispyb_command_list.append(
-            {
-                "ispyb_command": "insert_ctf",
-                "micrograph_name": ctf_micrograph.micrograph_name,
-                "astigmatism": ctf_micrograph.astigmatism,
-                "astigmatism_angle": ctf_micrograph.defocus_angle,
-                "max_estimated_resolution": ctf_micrograph.max_resolution,
-                "estimated_defocus": (
-                    float(ctf_micrograph.defocus_u) + float(ctf_micrograph.defocus_v)
-                )
-                / 2,
-                "cc_value": ctf_micrograph.fig_of_merit,
-                "amplitude_contrast": ctf_micrograph.amp_contrast,
-                "box_size_x": relion_options.ctffind_boxsize,
-                "box_size_y": relion_options.ctffind_boxsize,
-                "min_resolution": relion_options.ctffind_minres,
-                "max_resolution": relion_options.ctffind_maxres,
-                "min_defocus": relion_options.ctffind_defocus_min,
-                "max_defocus": relion_options.ctffind_defocus_max,
-                "defocus_step_size": relion_options.ctffind_defocus_step,
-            }
-        )
-    return ispyb_command_list
-
-
-@ispyb_results.register(relion.MotionCorr)
-def _(
-    stage_object: relion.MotionCorr, job_string: str, relion_options: RelionItOptions
-):
-    logger.info("Generating ISPyB commands for %s ", job_string)
-    ispyb_command_list = []
-    for motion_corr_micrograph in stage_object[job_string]:
-        number_of_frames = len(motion_corr_micrograph.drift_data)
-        ispyb_command_list.append(
-            {
-                "ispyb_command": "insert_motion_correction",
-                "micrograph_name": motion_corr_micrograph.micrograph_name,
-                "total_motion": motion_corr_micrograph.total_motion,
-                "early_motion": motion_corr_micrograph.early_motion,
-                "late_motion": motion_corr_micrograph.late_motion,
-                "average_motion_per_frame": (float(motion_corr_micrograph.total_motion))
-                / number_of_frames,
-                "dose_per_frame": relion_options.motioncor_doseperframe,
-                "patches_used_x": relion_options.motioncor_patches_x,
-                "patches_used_y": relion_options.motioncor_patches_y,
-                "image_number": motion_corr_micrograph.micrograph_number,
-                "drift_frames": [
-                    (frame.frame, frame.deltaX, frame.deltaY)
-                    for frame in motion_corr_micrograph.drift_data
-                ],
-            }
-        )
-    return ispyb_command_list
-
-
-@ispyb_results.register(relion.AutoPick)
-def _(stage_object: relion.AutoPick, job_string: str, relion_options: RelionItOptions):
-    logger.warning(
-        f"There are currently no ISPyB commands for the AutoPick stage {job_string}"
-    )
-    try:
-        num_particles = stage_object[job_string][0].number_of_particles
-        micrograph = stage_object[job_string][0].first_micrograph_name
-    except IndexError:
-        return []
-    ispyb_command_list = [
-        {
-            "ispyb_command": "insert_particle_picker",
-            "number_of_particles": num_particles,
-            "particle_diameter": relion_options.autopick_LoG_diam_max
-            / 10,  # units are nm not Angstrom in the DB
-            "micrograph_name": micrograph,
-        }
-    ]
-    return ispyb_command_list
-
-
-@ispyb_results.register(relion.Cryolo)
-def _(stage_object: relion.Cryolo, job_string: str, relion_options: RelionItOptions):
-    logger.warning(
-        "There are currently no ISPyB commands for the crYOLO stage %s ",
-        job_string,
-    )
-    try:
-        num_particles = stage_object[job_string][0].number_of_particles
-        micrograph = stage_object[job_string][0].first_micrograph_name
-    except IndexError:
-        return []
-    ispyb_command_list = [
-        {
-            "ispyb_command": "insert_particle_picker",
-            "number_of_particles": num_particles,
-            "particle_diameter": int(
-                relion_options.extract_boxsize
-                * relion_options.angpix
-                / relion_options.motioncor_binning
-            )
-            / 10,
-            "particle_picking_template": relion_options.cryolo_gmodel,
-            "micrograph_name": micrograph,
-        }
-    ]
-    return ispyb_command_list
-
-
-@ispyb_results.register(relion.Class2D)
-def _(stage_object: relion.Class2D, job_string: str, relion_options: RelionItOptions):
-    logger.warning(
-        "There are currently no ISPyB commands for the 2D classification stage %s ",
-        job_string,
-    )
-    ispyb_command_list = []
-    sorted_jobs = sorted(
-        [st for st in stage_object.keys()], key=lambda st: int(st.replace("job", ""))
-    )
-    batch_number = sorted_jobs.index(job_string) + 1
-    for class_2d in stage_object[job_string]:
-        ispyb_command_list.append(
-            {
-                "ispyb_command": "insert_class2d",
-                "number_of_particles_per_batch": relion_options.batch_size,
-                "number_of_classes_per_batch": relion_options.class2d_nr_classes,
-                "type": "2D",
-                "symmetry": relion_options.symmetry,
-                "class_number": class_2d.particle_sum[0],
-                "particles_per_class": class_2d.particle_sum[1],
-                "rotation_accuracy": class_2d.accuracy_rotations,
-                "translation_accuracy": class_2d.accuracy_translations_angst,
-                "estimated_resolution": class_2d.estimated_resolution,
-                "overall_fourier_completeness": class_2d.overall_fourier_completeness,
-                "batch_number": batch_number,
-            }
-        )
-    return ispyb_command_list
-
-
-@ispyb_results.register(relion.Class3D)
-def _(stage_object: relion.Class3D, job_string: str, relion_options: RelionItOptions):
-    logger.warning(
-        "There are currently no ISPyB commands for the 3D classification stage %s ",
-        job_string,
-    )
-    ispyb_command_list = []
-    sorted_jobs = sorted(
-        [st for st in stage_object.keys()], key=lambda st: int(st.replace("job", ""))
-    )
-    batch_number = sorted_jobs.index(job_string) + 1
-    for class_3d in stage_object[job_string]:
-        ispyb_command_list.append(
-            {
-                "ispyb_command": "insert_class3d",
-                "number_of_particles_per_batch": relion_options.batch_size,
-                "number_of_classes_per_batch": relion_options.class3d_nr_classes,
-                "type": "3D",
-                "symmetry": relion_options.symmetry,
-                "class_number": class_3d.particle_sum[0],
-                "particles_per_class": class_3d.particle_sum[1],
-                "rotation_accuracy": class_3d.accuracy_rotations,
-                "translation_accuracy": class_3d.accuracy_translations_angst,
-                "estimated_resolution": class_3d.estimated_resolution,
-                "overall_fourier_completeness": class_3d.overall_fourier_completeness,
-                "batch_number": batch_number,
-                "init_model_number_of_particles": class_3d.initial_model_num_particles,
-                "init_model_resolution": relion_options.inimodel_resol_final,
-            }
-        )
-    return ispyb_command_list
