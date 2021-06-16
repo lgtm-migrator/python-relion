@@ -335,6 +335,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
@@ -359,6 +361,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
@@ -389,6 +393,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
@@ -417,6 +423,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
@@ -441,6 +449,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
@@ -458,6 +468,8 @@ def _(
     relion_options,
     row,
 ):
+    if end_time is None:
+        return
     if (
         primary_table._last_update[source] is None
         or end_time > primary_table._last_update[source]
