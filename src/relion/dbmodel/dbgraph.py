@@ -9,6 +9,23 @@ class DBGraph(ProtoGraph):
             for tab in n.tables:
                 tab._last_update[self.name] = 0
 
+    def __call__(self, *args, **kwargs):
+        res = super().__call__(*args, **kwargs)
+        # print(res)
+        collapsed_res = []
+        if isinstance(res, dict):
+            for curr_res in res.values():
+                if curr_res is not None:
+                    collapsed_res.append(curr_res)
+        elif isinstance(res, list):
+            for el in res:
+                # print(el)
+                for curr_res in el.values():
+                    print(curr_res)
+                    if curr_res is not None:
+                        collapsed_res.append(curr_res)
+        return collapsed_res
+
     def update_times(self, source=None):
         times = []
         for n in self._node_list:

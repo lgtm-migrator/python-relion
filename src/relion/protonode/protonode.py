@@ -15,8 +15,6 @@ class ProtoNode:
         self.environment = Environment()
         self._link_traffic = {}
         self._share_traffic = {}
-        self._propagate = {}
-        self._delayed_traffic = {}
         self._call_count = 0
         self.shape = "oval"
         for key, value in kwargs.items():
@@ -58,7 +56,11 @@ class ProtoNode:
         res = []
         incomplete = self.environment.step()
         while incomplete:
-            res.append(self.func(*args, **kwargs))
+            curr_res = self.func(*args, **kwargs)
+            if isinstance(curr_res, list):
+                res.extend(curr_res)
+            else:
+                res.append(curr_res)
             incomplete = self.environment.step()
         for node in self._out:
             node._completed.append(self)

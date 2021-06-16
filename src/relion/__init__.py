@@ -231,7 +231,7 @@ class Project(RelionPipeline):
             return msgs
         for node in self._db_model.values():
             if results[node.name + "-" + node.nodeid] is not None:
-                msgs.extend(results[node.name + "-" + node.nodeid])
+                msgs.append(results[node.name + "-" + node.nodeid])
         return msgs
 
     @property
