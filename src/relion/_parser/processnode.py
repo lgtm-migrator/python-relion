@@ -34,44 +34,23 @@ class ProcessNode(ProtoNode):
     def func(self, *args, **kwargs):
         if self.attributes.get("result") is None:
             return
-        if self.attributes.get("results_last_collected") is None:
-            if self.attributes["end_time_stamp"] is None:
-                return []
-            self.attributes["results_last_collected"] = datetime.timestamp(
-                self.attributes["end_time_stamp"]
-            )
-            try:
-                self.environment["end_time"] = datetime.timestamp(
-                    self.attributes["end_time_stamp"]
-                )
-                self.attributes["db_results"] = self.attributes["result"].db_unpack(
-                    self.attributes["result"][self.attributes["job"]]
-                )
-            except TypeError:
-                self.environment["end_time"] = datetime.timestamp(
-                    self.attributes["end_time_stamp"]
-                )
-                self.attributes["db_results"] = self.attributes["result"].db_unpack(
-                    self.attributes["result"][self.attributes["job"]]
-                )
-
-            return self.attributes["db_results"]
-        elif self.attributes["results_last_collected"] < datetime.timestamp(
-            self.attributes["end_time_stamp"]
-        ):
-            self.attributes["results_last_collected"] = datetime.timestamp(
-                self.attributes["end_time_stamp"]
-            )
-            self.environment["end_time"] = datetime.timestamp(
-                self.attributes["end_time_stamp"]
-            )
-            self.attributes["db_results"] = self.attributes["result"].db_unpack(
-                self.attributes["result"][self.attributes["job"]]
-            )
-            return self.attributes["db_results"]
+        if self.attributes.get("end_time_stamp") is None:
+            return []
         self.environment["end_time"] = datetime.timestamp(
             self.attributes["end_time_stamp"]
         )
+        if self.attributes.get("results_last_collected") is None or self.attributes[
+            "results_last_collected"
+        ] < datetime.timestamp(self.attributes["end_time_stamp"]):
+            self.attributes["results_last_collected"] = datetime.timestamp(
+                self.attributes["end_time_stamp"]
+            )
+
+            db_results = self.attributes["result"].db_unpack(
+                self.attributes["result"][self.attributes["job"]]
+            )
+
+            return db_results
         return {}
 
     def change_name(self, new_name):
