@@ -15,6 +15,7 @@ class ProtoNode:
         self.environment = Environment()
         self._link_traffic = {}
         self._share_traffic = {}
+        self._append_traffic = {}
         self._call_count = 0
         self.shape = "oval"
         for key, value in kwargs.items():
@@ -74,15 +75,6 @@ class ProtoNode:
     def __getitem__(self, key):
         return self._scrape_env(self.environment, key)
 
-    def _scrape_env(self, env, key):
-        res = env.get(key)
-        if res is None:
-            if env.get(">propagate>") is not None:
-                res = env[">propagate>"].get(key)
-            if res is None and env.get("^tower^") is not None:
-                return self._scrape_env(env["^tower^"], key)
-        return res
-
     def func(self, *args, **kwargs):
         pass
 
@@ -93,10 +85,14 @@ class ProtoNode:
     def change_name(self, new_name):
         self._name = new_name
 
-    def link_to(self, next_node, traffic=None, result_as_traffic=False, share=None):
+    def link_to(
+        self, next_node, traffic=None, result_as_traffic=False, share=None, append=False
+    ):
         if next_node not in self._out:
             self._out.append(next_node)
             next_node._in.append(self)
+            if append:
+                self._append_traffic[(next_node.name, next_node.nodeid)] = True
             if traffic is None:
                 self._link_traffic[(next_node.name, next_node.nodeid)] = {}
             else:

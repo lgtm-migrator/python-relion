@@ -1,6 +1,16 @@
 import functools
 
 
+def update_append(d01, d02):
+    for key, value in d02.items():
+        if key in d01:
+            if not isinstance(d01[key], list):
+                d01[key] = [d01[key]]
+            d01[key].append(value)
+        else:
+            d01[key] = value
+
+
 class Propagate:
     def __init__(self):
         self.store = {}
@@ -81,9 +91,12 @@ class Environment:
     def get(self, key):
         return self[key]
 
-    def update(self, traffic):
+    def update(self, traffic, append=False):
         if isinstance(traffic, dict):
-            self.base.update(traffic)
+            if append:
+                update_append(self.base, traffic)
+            else:
+                self.base.update(traffic)
             return
         elif isinstance(traffic, list):
             if list(self.iterator) == [{}] or list(self.iterator) == []:
