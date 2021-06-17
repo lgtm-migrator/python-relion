@@ -18,6 +18,8 @@ class DBGraph(ProtoGraph):
                     collapsed_res.append(curr_res)
         elif isinstance(res, list):
             for el in res:
+                if el is None:
+                    continue
                 for curr_res in el.values():
                     if curr_res is not None and curr_res not in collapsed_res:
                         collapsed_res.append(curr_res)

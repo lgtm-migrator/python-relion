@@ -1,4 +1,6 @@
 import functools
+import re
+import ispyb.sqlalchemy as tabs
 
 # if we replace uuid with count do not include 0 in the count because it will break some bool checks for None
 
@@ -193,31 +195,26 @@ class Table:
         return row
 
 
+def to_snake_case(camel_case):
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", camel_case).lower()
+
+
+def get_prim_key(tab):
+    for key in tab.__table__.columns.keys():
+        if tab.__table__.columns[key].primary_key:
+            return to_snake_case(key)
+
+
 class MotionCorrectionTable(Table):
     def __init__(self):
         columns = [
-            "motion_correction_id",
-            "auto_proc_program_id",
-            "image_number",
-            "first_frame",
-            "last_frame",
-            "dose_per_frame",
-            "dose_weight",
-            "total_motion",
-            "average_motion_per_frame",
-            "drift_plot_full_path",
-            "micrograph_full_path",
-            "micrograph_snapshot_full_path",
-            "patches_used_x",
-            "patches_used_y",
-            "fft_full_path",
-            "fft_corrected_full_path",
-            "movie_id",
-            "comments",
+            to_snake_case(c) for c in tabs.MotionCorrection.__table__.columns.keys()
         ]
+        columns.append("job_string")
+        prim_key = get_prim_key(tabs.MotionCorrection)
         super().__init__(
             columns,
-            "motion_correction_id",
+            prim_key,
             unique="micrograph_full_path",
             counters="image_number",
         )
@@ -225,28 +222,11 @@ class MotionCorrectionTable(Table):
 
 class CTFTable(Table):
     def __init__(self):
-        columns = [
-            "ctf_id",
-            "motion_correction_id",
-            "box_size_x",
-            "box_size_y",
-            "min_resolution",
-            "max_resoltuion",
-            "min_defocus",
-            "max_defocus",
-            "defocus_step_size",
-            "astigmatism",
-            "astigmatism_angle",
-            "estimated_resolution",
-            "estimated_defocus",
-            "amplitude_contrast",
-            "cc_value",
-            "fft_theoretical_full_path",
-            "comments",
-        ]
+        columns = [to_snake_case(c) for c in tabs.CTF.__table__.columns.keys()]
+        prim_key = get_prim_key(tabs.CTF)
         super().__init__(
             columns,
-            "ctf_id",
+            prim_key,
             unique="motion_correction_id",
             required="motion_correction_id",
         )
@@ -255,68 +235,45 @@ class CTFTable(Table):
 class ParticlePickerTable(Table):
     def __init__(self):
         columns = [
-            "particle_picker_id",
-            "program_id",
-            "first_motion_correction_id",
-            "particle_picking_template",
-            "particle_diameter",
-            "number_of_particles",
-            "job_string",
-            "micrograph_full_path",
+            to_snake_case(c) for c in tabs.ParticlePicker.__table__.columns.keys()
         ]
-        super().__init__(columns, "particle_picker_id", unique="job_string")
+        columns.append("job_string")
+        prim_key = get_prim_key(tabs.ParticlePicker)
+        super().__init__(columns, prim_key, unique="job_string")
 
 
 class ParticleClassificationGroupTable(Table):
     def __init__(self):
         columns = [
-            "particle_classification_group_id",
-            "particle_picker_id",
-            "program_id",
-            "type",
-            "batch_number",
-            "number_of_particles_per_batch",
-            "number_of_classes_per_batch",
-            "symmetry",
-            "parpick_job_string",
-            "job_string",
+            to_snake_case(c)
+            for c in tabs.ParticleClassificationGroup.__table__.columns.keys()
         ]
-        super().__init__(
-            columns, "particle_classification_group_id", unique="job_string"
-        )
+        columns.append("job_string")
+        prim_key = get_prim_key(tabs.ParticleClassificationGroup)
+        super().__init__(columns, prim_key, unique="job_string")
 
 
 class ParticleClassificationTable(Table):
     def __init__(self):
         columns = [
-            "particle_classification_id",
-            "particle_classification_group_id",
-            "class_number",
-            "class_image_full_path",
-            "particles_per_class",
-            "rotation_accuracy",
-            "translation_accuracy",
-            "estimated_resolution",
-            "overall_fourier_completeness",
-            "job_string",
+            to_snake_case(c)
+            for c in tabs.ParticleClassification.__table__.columns.keys()
         ]
-        super().__init__(
-            columns, "particle_classification_id", unique=["job_string", "class_number"]
-        )
+        columns.append("job_string")
+        prim_key = get_prim_key(tabs.ParticleClassification)
+        super().__init__(columns, prim_key, unique=["job_string", "class_number"])
 
 
 class CryoemInitialModelTable(Table):
     def __init__(self):
         columns = [
-            "cryoem_initial_model_id",
-            "resolution",
-            "number_of_particles",
-            "particle_classification_id",
-            "ini_model_job_string",
+            to_snake_case(c) for c in tabs.CryoemInitialModel.__table__.columns.keys()
         ]
+        columns.append("ini_model_job_string")
+        prim_key = get_prim_key(tabs.CryoemInitialModel)
         super().__init__(
             columns,
-            "cryoem_initial_model_id",
+            prim_key,
             unique="ini_model_job_string",
             append="particle_classification_id",
         )
