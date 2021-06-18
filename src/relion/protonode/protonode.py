@@ -73,7 +73,7 @@ class ProtoNode:
         return res
 
     def __getitem__(self, key):
-        return self._scrape_env(self.environment, key)
+        return self.environment[key]
 
     def func(self, *args, **kwargs):
         pass
