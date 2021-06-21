@@ -323,6 +323,26 @@ class RelionPipeline:
         self._calculate_relative_job_times()
         self.preprocess = self._get_pipeline_jobs(preproc_log)
 
+    def collect_cluster_info(self, basepath):
+        for job in self._job_nodes:
+            job.attributes["cluster_job_id"] = self._latest_cluster_id(
+                basepath / job._path / "run.out"
+            )
+
+    def _latest_cluster_id(self, log_path):
+        try:
+            for line in reversed(list(open(log_path))):
+                if "with job ID" in line:
+                    cluster_id = line.split()[-1]
+                    break
+            else:
+                return
+            if cluster_id.isnumeric():
+                return cluster_id
+            return
+        except FileNotFoundError:
+            return
+
     def _get_pipeline_jobs(self, logfile):
         if logfile is None:
             return []

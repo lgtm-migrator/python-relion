@@ -14,6 +14,7 @@ class ProcessNode(Node):
         self.environment["start_time"] = kwargs.get("start_time")
         self.environment["end_time"] = kwargs.get("end_time")
         self.environment["drop"] = kwargs.get("drop") or []
+        self.environment["cluster_job_id"] = kwargs.get("cluster_job_id")
         self.db_node = None
 
     def __eq__(self, other):
