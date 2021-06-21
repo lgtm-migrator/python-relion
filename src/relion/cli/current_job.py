@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import subprocess
 
 from relion import Project
 
@@ -27,6 +28,28 @@ def run():
                 print(
                     f"Job running with cluster id: {current_job.attributes['cluster_job_id']}"
                 )
+                qstat = subprocess.run(
+                    ["qstat", "-j", current_job.attributes["cluster_job_id"]],
+                    capture_output=True,
+                )
+                qstat_output = qstat.stdout.decode("utf-8")
+                job_state = None
+                cluster_start_time = None
+                for prop in qstat_output.split("\n"):
+                    if "job_state" in prop:
+                        job_state = prop.split()[-1]
+                    if "start_time" in prop:
+                        cluster_start_time = " ".join(prop.split()[-2:])
+                if job_state == "r":
+                    print(f"cluster job running with start time {cluster_start_time}")
+                elif job_state == "q":
+                    print("cluster job queued")
+                elif job_state:
+                    print(f"cluster job has status: {job_state}")
+                else:
+                    print(
+                        f"cluster job {current_job.attributes['cluster_job_id']} not found"
+                    )
             print()
 
 

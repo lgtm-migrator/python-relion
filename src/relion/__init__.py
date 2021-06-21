@@ -313,7 +313,7 @@ class Project(RelionPipeline):
 
     @property
     def current_jobs(self):
-        self.load()
+        self.load(cluster=True)
         currj = super().current_jobs
         if currj is None:
             return None
