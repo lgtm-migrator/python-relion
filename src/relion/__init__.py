@@ -168,7 +168,7 @@ class Project(RelionPipeline):
         )
         for jobnode in self:
             if self._results_dict.get(jobnode.name) and jobnode.name != "InitialModel":
-                jobnode.attributes["result"] = self._results_dict[jobnode.name]
+                jobnode.environment["result"] = self._results_dict[jobnode.name]
                 jobnode.environment["extra_options"] = self.run_options
                 self._db_model[jobnode.name].environment[
                     "extra_options"
@@ -186,7 +186,7 @@ class Project(RelionPipeline):
                 if jobnode.name == "AutoPick":
                     jobnode.propagate(("job_string", "parpick_job_string"))
             elif jobnode.name == "InitialModel":
-                jobnode.attributes["result"] = self._results_dict[jobnode.name]
+                jobnode.environment["result"] = self._results_dict[jobnode.name]
                 jobnode.link_to(
                     self._db_model[jobnode.name],
                     result_as_traffic=True,
@@ -194,8 +194,8 @@ class Project(RelionPipeline):
                 )
                 self._data_pipeline.add_node(jobnode)
                 jobnode.propagate(("ini_model_job_string", "ini_model_job_string"))
-            elif "crYOLO" in jobnode.attributes.get("alias"):
-                jobnode.attributes["result"] = self._results_dict[
+            elif "crYOLO" in jobnode.environment.get("alias"):
+                jobnode.environment["result"] = self._results_dict[
                     f"{jobnode._path}:crYOLO"
                 ]
                 jobnode.environment["extra_options"] = self.run_options

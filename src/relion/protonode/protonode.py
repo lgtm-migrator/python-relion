@@ -11,7 +11,6 @@ class ProtoNode:
         self._out = []
         self._in = []
         self._completed = []
-        self.attributes = {}
         self.environment = Environment()
         self._link_traffic = {}
         self._share_traffic = {}
@@ -19,7 +18,7 @@ class ProtoNode:
         self._call_count = 0
         self.shape = "oval"
         for key, value in kwargs.items():
-            self.attributes[key] = value
+            self.environment[key] = value
 
     def __eq__(self, other):
         if isinstance(other, ProtoNode):

@@ -7,11 +7,11 @@ class ProcessNode(ProtoNode):
     def __init__(self, path, **kwargs):
         super().__init__(str(path), **kwargs)
         self._path = pathlib.PurePosixPath(path)
-        self.attributes["status"] = kwargs.get("status")
-        self.attributes["start_time_stamp"] = kwargs.get("start_time_stamp")
-        self.attributes["end_time_stamp"] = kwargs.get("end_time_stamp")
-        self.attributes["start_time"] = kwargs.get("start_time")
-        self.attributes["end_time"] = kwargs.get("end_time")
+        self.environment["status"] = kwargs.get("status")
+        self.environment["start_time_stamp"] = kwargs.get("start_time_stamp")
+        self.environment["end_time_stamp"] = kwargs.get("end_time_stamp")
+        self.environment["start_time"] = kwargs.get("start_time")
+        self.environment["end_time"] = kwargs.get("end_time")
         self.db_node = None
 
     def __eq__(self, other):
@@ -32,22 +32,22 @@ class ProcessNode(ProtoNode):
         return hash(("relion._parser.ProcessNode", self._path))
 
     def func(self, *args, **kwargs):
-        if self.attributes.get("result") is None:
+        if self.environment.get("result") is None:
             return
-        if self.attributes.get("end_time_stamp") is None:
+        if self.environment.get("end_time_stamp") is None:
             return []
         self.environment["end_time"] = datetime.timestamp(
-            self.attributes["end_time_stamp"]
+            self.environment["end_time_stamp"]
         )
-        if self.attributes.get("results_last_collected") is None or self.attributes[
+        if self.environment.get("results_last_collected") is None or self.environment[
             "results_last_collected"
-        ] < datetime.timestamp(self.attributes["end_time_stamp"]):
-            self.attributes["results_last_collected"] = datetime.timestamp(
-                self.attributes["end_time_stamp"]
+        ] < datetime.timestamp(self.environment["end_time_stamp"]):
+            self.environment["results_last_collected"] = datetime.timestamp(
+                self.environment["end_time_stamp"]
             )
 
-            db_results = self.attributes["result"].db_unpack(
-                self.attributes["result"][self.attributes["job"]]
+            db_results = self.environment["result"].db_unpack(
+                self.environment["result"][self.environment["job"]]
             )
 
             return db_results
