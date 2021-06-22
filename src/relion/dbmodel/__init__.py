@@ -28,6 +28,14 @@ class DBModel(collections.abc.Mapping):
     def keys(self):
         return self._db.keys()
 
+    @property
+    def db_nodes(self):
+        nodes = []
+        for node in self.values():
+            if node not in nodes:
+                nodes.append(node)
+        return nodes
+
     def _make_db(self, db_name):
         if db_name == "ISPyB":
             return self._make_ispyb_model()
@@ -74,6 +82,7 @@ class DBModel(collections.abc.Mapping):
                 "check_for_foreign_name": "job_string",
                 "foreign_key": "particle_picker_id",
                 "table_key": "particle_picker_id",
+                "first": True,
                 "foreign_table": self.parpick_db_node.tables[0],
             },
         )

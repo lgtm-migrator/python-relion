@@ -237,9 +237,13 @@ class ParticlePickerTable(Table):
         columns = [
             to_snake_case(c) for c in tabs.ParticlePicker.__table__.columns.keys()
         ]
+        columns.append("micrograph_full_path")
+        columns.append("first_motion_correction_micrograph")
         columns.append("job_string")
         prim_key = get_prim_key(tabs.ParticlePicker)
-        super().__init__(columns, prim_key, unique="job_string")
+        super().__init__(
+            columns, prim_key, unique=["micrograph_full_path", "job_string"]
+        )
 
 
 class ParticleClassificationGroupTable(Table):

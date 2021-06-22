@@ -81,9 +81,11 @@ class DBNode(ProtoNode):
                     self.environment[self.environment["table_key"]] = None
                     return
                 try:
-                    self.environment[self.environment["table_key"]] = [
-                        table[table._primary_key][ci] for ci in indices
-                    ]
+                    entries = [table[table._primary_key][ci] for ci in indices]
+                    if self.environment["first"]:
+                        self.environment[self.environment["table_key"]] = entries[0]
+                    else:
+                        self.environment[self.environment["table_key"]] = entries
                     return
                 except TypeError:
                     self.environment[self.environment["table_key"]] = table[

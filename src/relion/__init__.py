@@ -233,7 +233,8 @@ class Project(RelionPipeline):
         results = self._data_pipeline()
         if results is None:
             return msgs
-        for node in self._db_model.values():
+        for node in self._db_model.db_nodes:
+            print(node)
             try:
                 if results[node.name + "-" + node.nodeid] is not None:
                     msgs.append(results[node.name + "-" + node.nodeid])
