@@ -38,4 +38,20 @@ def test_unlink_from():
     assert node_A._out == []
 
 
-# def test_
+def test_node_call_adds_completed_status_to_out_nodes():
+    node_A = ProtoNode("A")
+    node_B = ProtoNode("B")
+    node_C = ProtoNode("C")
+    node_A.link_to(node_B)
+    node_A.link_to(node_C)
+    node_A()
+    assert node_B._completed == [node_A]
+    assert node_C._completed == [node_A]
+
+
+def test_propagate_adds_correctly_to_environment():
+    node_A = ProtoNode("A")
+    node_A.environment["a"] = 1
+    node_A.propagate(("a", "b"))
+    assert node_A.environment["b"] == 1
+    assert node_A.environment.propagate.store == {"b": 1}
