@@ -32,6 +32,7 @@ Environment
 The environment itself contains a series of dictionaries which are searched in a specific order for the key provided. 
 If a key is not found :python:`None` is returned, rather than raising a :python:`KeyError`. The dictionary hierarchy in 
 ``environment`` is:
+
 * ``base``: searched first, updated with :python:`environment[key] = value`
 * ``propagate.store``: accessed directly through :python:`environment.propagate[key]`, only accessed by :python:`environment[key]` 
 if not empty
