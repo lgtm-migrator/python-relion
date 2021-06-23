@@ -14,7 +14,7 @@ maintain records of what data has been sent to the database and the various kind
 the database tables and how they correspond to the structure of the Relion pipeline. 
 
 Relion itself keeps track of individual job's inputs and outputs in the form of a graph, the nodes and edges of 
-which are recorded in the :file:`default_pipeline.star` file. It is therefore natural to mimic this structure when extracting 
+which are recorded in the ``default_pipeline.star`` file. It is therefore natural to mimic this structure when extracting 
 results from a project.
 
 Nodes and graphs
