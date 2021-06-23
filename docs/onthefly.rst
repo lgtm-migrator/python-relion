@@ -20,4 +20,14 @@ results from a project.
 Nodes and graphs
 ================
 
-:python:`relion.protonode` provides some basic functionality for setting up a data collection workflow.
+:python:`relion.protonode` provides some basic functionality for setting up a data collection workflow. The base object 
+is :python:`relion.protonode.protonode.ProtoNode` which has an associated environment, along with various hidden attributes. The 
+latter include lists that hold any incoming and outgoing nodes and a record of which incoming nodes have been called etc. 
+The ``environment`` behaves similarly to a dictionary and is intended to store any data needed by the node, either for 
+processing or to pass onwards to other nodes. 
+
+Environment
+-----------
+
+The environment itself contains a series of dictionaries which are searched in a specific order for the key provided. 
+If a key is not found :python:`None` is returned, rather than raising a :python:`KeyError`.
