@@ -34,7 +34,5 @@ If a key is not found :python:`None` is returned, rather than raising a :python:
 ``environment`` is:
 
 * ``base``: searched first, updated with :python:`environment[key] = value`
-* ``propagate.store``: accessed directly through :python:`environment.propagate[key]`, only accessed by :python:`environment[key]` 
-if not empty
-* ``escalate.store``: similar to ``propagate`` but rather than a dictionary is another node's ``environment`` allowing for a 
-recursive search
+* ``propagate.store``: accessed directly through :python:`environment.propagate[key]`, only accessed by :python:`environment[key]` if not empty
+* ``escalate.store``: similar to ``propagate`` but rather than a dictionary is another node's ``environment`` allowing for a recursive search
