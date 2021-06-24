@@ -2,6 +2,7 @@ from collections import namedtuple
 from collections import Counter
 from relion._parser.jobtype import JobType
 import logging
+import numpy as np
 
 logger = logging.getLogger("relion._parser.class3D")
 
@@ -98,6 +99,7 @@ class Class3D(JobType):
         )
         reference_image = self.parse_star_file("_rlnReferenceImage", smfile, info_table)
 
+        info_table = self._find_table_from_column_name("_rlnClassNumber", sdfile)
         class_numbers = self.parse_star_file("_rlnClassNumber", sdfile, info_table)
         particle_sum = self._sum_all_particles(class_numbers)
         int_particle_sum = [(int(name), value) for name, value in particle_sum.items()]
@@ -166,6 +168,47 @@ class Class3D(JobType):
     def _sum_all_particles(self, list):
         counted = self._count_all(list)
         return counted
+
+    def particle_distributions(self, jobdir):
+        try:
+            dfile, mfile = self._final_data_and_model(jobdir)
+        except ValueError as e:
+            logger.debug(
+                f"The exception {e} was caught while trying to get data and model files. Returning an empty list",
+                exc_info=True,
+            )
+            return []
+
+        try:
+            sdfile = self._read_star_file(jobdir, dfile)
+        except RuntimeError:
+            logger.debug(
+                "gemmi could not open file while trying to get data and model files. Returning an empty list",
+                exc_info=True,
+            )
+            return []
+        info_table = self._find_table_from_column_name("_rlnClassNumber", sdfile)
+        # micrograph = self.parse_star_file("_rlnMicrographName", sdfile, info_table)
+        # coord_x = self.parse_star_file("_rlnCoordinateX", sdfile, info_table)
+        # coord_y = self.parse_star_file("_rlnCoordinateY", sdfile, info_table)
+        # likelihood_cont = self.parse_star_file("_rlnLogLikeliContribution", sdfile, info_table)
+        phis = self.parse_star_file("_rlnAngleRot", sdfile, info_table)
+        thetas = self.parse_star_file("_rlnAngleTilt", sdfile, info_table)
+        coords = [self._winkel_tripel(phi, theta) for phi, theta in zip(phis, thetas)]
+        print(coords)
+
+    @staticmethod
+    def _winkel_tripel(phi, theta):
+        phi *= 2 * np.pi / 360
+        theta *= 2 * np.pi / 360
+        phi_1 = np.arccos(2 / np.pi)
+        alpha = np.arccos(np.cos(phi) * np.cos(theta / 2))
+        x = 0.5 * (
+            theta * np.cos(phi_1)
+            + (2 * np.cos(phi) * np.sin(theta / 2) / np.sinc(alpha))
+        )
+        y = 0.5 * (phi + (np.sin(phi) / np.sinc(alpha)))
+        return x, y
 
     @staticmethod
     def db_unpack(particle_class):
