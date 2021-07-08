@@ -8,6 +8,7 @@ import os
 import pathlib
 import time
 from collections import namedtuple
+from typing import NamedTuple
 
 from gemmi import cif
 
@@ -57,6 +58,13 @@ RelionJobInfo = namedtuple(
         "end_time_stamp",
     ],
 )
+
+
+class ClusterJobInfo(NamedTuple):
+    job_name: str
+    job_ids: list
+    per_micrograph: bool = False
+    micrograph_counts: int = 0
 
 
 class Project(RelionPipeline):
@@ -266,10 +274,21 @@ class Project(RelionPipeline):
         if cluster:
             self.collect_cluster_info(self.basepath)
 
-    def load_cluster_info(self):
+    @property
+    def cluster_info(self):
+        info = []
         self.collect_all_cluster_info(self.basepath)
         for jn in self._job_nodes:
-            print(jn.attributes["cluster_job_mic_counts"])
+            if any(jn.attributes["cluster_job_mic_counts"]):
+                info.append(
+                    ClusterJobInfo(
+                        job_name=jn._path,
+                        job_ids=jn.attributes["cluster_job_ids"],
+                        per_micrograph=jn in self.preprocess,
+                        micrograph_counts=jn.attributes["cluster_job_mic_counts"],
+                    )
+                )
+        return info
 
     def show_job_nodes(self):
         self.load()
