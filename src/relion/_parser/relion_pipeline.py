@@ -329,6 +329,12 @@ class RelionPipeline:
                 basepath / job._path / "run.out"
             )
 
+    def collect_all_cluster_info(self, basepath):
+        for job in self._job_nodes:
+            job.attributes["cluster_job_mic_counts"] = self._number_of_mics_run(
+                basepath / job._path / "run.out"
+            )
+
     def _latest_cluster_id(self, log_path):
         try:
             for line in reversed(list(open(log_path))):
@@ -336,12 +342,37 @@ class RelionPipeline:
                     cluster_id = line.split()[-1]
                     break
             else:
-                return
+                return None
             if cluster_id.isnumeric():
                 return cluster_id
-            return
+            return None
         except FileNotFoundError:
-            return
+            return None
+
+    def _all_cluster_ids(self, log_path):
+        try:
+            cluster_ids = [
+                line.split()[-1] for line in open(log_path) if "with job ID" in line
+            ]
+            if all(cid.isnumeric() for cid in cluster_ids):
+                return cluster_ids
+            return None
+        except FileNotFoundError:
+            return None
+
+    def _number_of_mics_run(self, log_path):
+        try:
+            job_count = 0
+            mic_counts = []
+            for line in open(log_path):
+                if "with job ID" in line:
+                    job_count += 1
+                    mic_counts.append(0)
+                if "*" in line and job_count:
+                    mic_counts[job_count - 1] += 1
+            return mic_counts
+        except FileNotFoundError:
+            return None
 
     def _get_pipeline_jobs(self, logfile):
         if logfile is None:
