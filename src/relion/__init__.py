@@ -280,12 +280,21 @@ class Project(RelionPipeline):
         self.collect_all_cluster_info(self.basepath)
         for jn in self._job_nodes:
             if any(jn.attributes["cluster_job_mic_counts"]):
+                counts = [c for c in jn.attributes["cluster_job_mic_counts"] if c]
+                ids = [
+                    i
+                    for i, c in zip(
+                        jn.attributes["cluster_job_ids"],
+                        jn.attributes["cluster_job_mic_counts"],
+                    )
+                    if c
+                ]
                 info.append(
                     ClusterJobInfo(
-                        job_name=jn._path,
-                        job_ids=jn.attributes["cluster_job_ids"],
+                        job_name=str(jn._path),
+                        job_ids=ids,
                         per_micrograph=jn in self.preprocess,
-                        micrograph_counts=jn.attributes["cluster_job_mic_counts"],
+                        micrograph_counts=counts,
                     )
                 )
         return info

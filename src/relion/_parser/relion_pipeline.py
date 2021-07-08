@@ -358,7 +358,7 @@ class RelionPipeline:
                 line.split()[-1] for line in open(log_path) if "with job ID" in line
             ]
             if all(cid.isnumeric() for cid in cluster_ids):
-                return cluster_ids
+                return [int(cid) for cid in cluster_ids]
             return None
         except FileNotFoundError:
             return None
