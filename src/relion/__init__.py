@@ -251,6 +251,11 @@ class Project(RelionPipeline):
         if cluster:
             self.collect_cluster_info(self.basepath)
 
+    def load_cluster_info(self):
+        self.collect_all_cluster_info(self.basepath)
+        for jn in self._job_nodes:
+            print(jn.attributes["cluster_job_mic_counts"])
+
     def show_job_nodes(self):
         self.load()
         super().show_job_nodes(self.basepath)
