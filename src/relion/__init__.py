@@ -264,7 +264,10 @@ class Project(RelionPipeline):
         info = []
         self.collect_all_cluster_info(self.basepath)
         for jn in self._job_nodes:
-            if any(jn.attributes["cluster_job_mic_counts"]):
+            if (
+                any(jn.attributes["cluster_job_mic_counts"])
+                or jn not in self.preprocess
+            ):
                 counts = [c for c in jn.attributes["cluster_job_mic_counts"] if c]
                 ids = [
                     i
@@ -272,7 +275,7 @@ class Project(RelionPipeline):
                         jn.attributes["cluster_job_ids"],
                         jn.attributes["cluster_job_mic_counts"],
                     )
-                    if c
+                    if c or jn not in self.preprocess
                 ]
                 info.append(
                     ClusterJobInfo(
