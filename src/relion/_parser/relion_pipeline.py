@@ -371,7 +371,11 @@ class RelionPipeline:
                 if "with job ID" in line:
                     job_count += 1
                     mic_counts.append(0)
-                if "*" in line and job_count:
+                if (
+                    ("*" in line or "Filtering" in line)
+                    and (".mrc" in line or ".tiff" in line)
+                    and job_count
+                ):
                     mic_counts[job_count - 1] += 1
             return mic_counts
         except FileNotFoundError:
