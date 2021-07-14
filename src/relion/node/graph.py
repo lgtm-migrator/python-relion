@@ -154,7 +154,7 @@ class Graph(Node):
         for o in self.origins:
             self._follow(o, traffic={}, share=[], append=o._can_append)
 
-    def _follow(self, node, traffic, share, append=False):
+    def _follow(self, node, traffic, share):
         called = False
         if node not in self.nodes:
             return
