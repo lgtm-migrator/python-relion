@@ -6,6 +6,7 @@ class DecompNode(Node):
         return hash(("relion._parser.DecompNode", self.name))
 
     def func(self, *args, **kwargs):
+        print("decomp:", self.environment["data"], self.environment.get("unpack"))
         if self.environment.get("unpack") is None:
             return None
         if (
@@ -15,12 +16,14 @@ class DecompNode(Node):
             return None
         if self.environment.get("data") is None:
             return []
+        job_data = self.environment["data"][self.environment["job"]]
         result = []
-        for u in getattr(self.environment["data"], self.environment["unpack"]):
-            this_res = {}
-            for ml in self.environment["meta_labels"]:
-                this_res[ml] = getattr(self.environment["data"], ml)
-            for l in self.environment["labels"]:
-                this_res[l] = getattr(u, ml)
-            result.append(this_res)
+        for jd in job_data:
+            for u in getattr(jd, self.environment["unpack"]):
+                this_res = {}
+                for ml in self.environment["meta_labels"]:
+                    this_res[ml] = getattr(jd, ml)
+                for l in self.environment["labels"]:
+                    this_res[l] = getattr(u, l)
+                result.append(this_res)
         return result

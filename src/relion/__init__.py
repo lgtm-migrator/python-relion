@@ -16,6 +16,7 @@ from relion._parser.class2D import Class2D
 from relion._parser.class3D import Class3D
 from relion._parser.cryolo import Cryolo
 from relion._parser.ctffind import CTFFind
+from relion._parser.decompnode import DecompNode
 from relion._parser.initialmodel import InitialModel
 from relion._parser.motioncorrection import MotionCorr
 from relion._parser.relion_pipeline import RelionPipeline
@@ -84,6 +85,7 @@ class Project(RelionPipeline):
             raise ValueError(f"path {self.basepath} is not a directory")
         self._data_pipeline = Graph("DataPipeline", [])
         self._db_model = DBModel(database)
+        self._particle_unpack = DecompNode("Particles")
         self._drift_cache = {}
         if run_options is None:
             self.run_options = RelionItOptions()
@@ -217,6 +219,16 @@ class Project(RelionPipeline):
                     self._update_pipeline(
                         jobnode, jobnode.name, prop=("job_string", "parpick_job_string")
                     )
+                    jobnode.link_to(
+                        self._particle_unpack,
+                        share=[("job", "job"), ("result", "data")],
+                        traffic={
+                            "unpack": "particles",
+                            "labels": ["coordinate_x", "coordinate_y"],
+                            "meta_labels": ["micrograph_full_path"],
+                        },
+                    )
+                    self._data_pipeline.add_node(self._particle_unpack)
                 elif "crYOLO" in jobnode.environment.get("alias"):
                     self._update_pipeline(
                         jobnode,
