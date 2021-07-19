@@ -1,13 +1,24 @@
 import logging
 import pathlib
 
-from relion._parser.autopick import ParticlePickerInfo
+from relion._parser.autopick import (
+    ParticleCacheRecord,
+    ParticleInfo,
+    ParticlePickerInfo,
+)
 from relion._parser.jobtype import JobType
 
 logger = logging.getLogger("relion._parser.cryolo")
 
 
 class Cryolo(JobType):
+    def __init__(self, path, particle_cache=None):
+        super().__init__(path)
+        if particle_cache is None:
+            self._particle_cache = {}
+        else:
+            self._particle_cache = particle_cache
+
     def __eq__(self, other):
         if isinstance(other, Cryolo):  # check this
             return self._basepath == other._basepath
@@ -33,9 +44,26 @@ class Cryolo(JobType):
     def _load_job_directory(self, jobdir):
         num_particles = 0
         particles_per_micrograph = {}
+        particles = {}
         first_mic = ""
         for star_file in (self._basepath / jobdir / "Movies").glob("**/*"):
             if star_file.is_file() and "gain" not in str(star_file):
+                if self._particle_cache.get(jobdir):
+                    if self._particle_cache[jobdir].get(star_file):
+                        try:
+                            if (
+                                self._particle_cache[jobdir][star_file].file_size
+                                == star_file.stat().st_size
+                            ):
+                                return self._particle_cache[jobdir][star_file].data
+                        except FileNotFoundError:
+                            logger.debug(
+                                "Could not find expected file containing particle data",
+                                exc_info=True,
+                            )
+                            return []
+                else:
+                    self._particle_cache[jobdir] = {}
                 try:
                     file = self._read_star_file(
                         jobdir, star_file.relative_to(self._basepath / jobdir)
@@ -48,13 +76,26 @@ class Cryolo(JobType):
                     logger.debug(f"_rlnCoordinateX not found in file {file}")
                     return []
 
-                all_particles = self.parse_star_file(
+                all_particles_x = self.parse_star_file(
                     "_rlnCoordinateX", file, info_table
+                )
+                all_particles_y = self.parse_star_file(
+                    "_rlnCoordinateY", file, info_table
                 )
                 if particles_per_micrograph == {}:
                     first_mic = star_file
-                particles_per_micrograph[star_file] = len(all_particles)
-                num_particles += len(all_particles)
+                particles_per_micrograph[star_file] = len(all_particles_x)
+                num_particles += len(all_particles_x)
+                particles[star_file] = [
+                    ParticleInfo(x, y) for x, y in zip(all_particles_x, all_particles_y)
+                ]
+                try:
+                    self._particle_cache[jobdir][star_file] = ParticleCacheRecord(
+                        particles[star_file],
+                        star_file.stat().st_size,
+                    )
+                except FileNotFoundError:
+                    return []
 
         # all of this just tracks back to a micrograph name from the MotionCorrection job
         try:
@@ -90,6 +131,7 @@ class Cryolo(JobType):
                     str(first_mic.relative_to(self._basepath / jobdir)).replace(
                         "_autopick.star", ".mrc"
                     ),
+                    particles[mic],
                     jobdir,
                 )
             )

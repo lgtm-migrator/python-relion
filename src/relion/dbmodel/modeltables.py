@@ -18,10 +18,12 @@ class Table:
         counters=None,
         append=None,
         required=None,
+        destructive=False,
     ):
         self.columns = columns
         self._tab = {c: [] for c in self.columns}
         self._primary_key = primary_key
+        self._destructive = destructive
         self._last_update = {self: 0}
         if unique is None:
             self._unique = None
@@ -96,9 +98,17 @@ class Table:
                                     self._tab[c][index].add(row_value)
                                 modified = True
                         else:
-                            if self._tab[c][index] != row_value:
-                                modified = True
-                                self._tab[c][index] = row_value
+                            if self._destructive:
+                                if self._tab[c][index] != row_value:
+                                    modified = True
+                                    self._tab[c][index] = row_value
+                            else:
+                                if (
+                                    self._tab[c][index] is not None
+                                    and self._tab[c][index] != row_value
+                                ):
+                                    modified = True
+                                    self._tab[c][index] = row_value
 
         if modified:
             if prim_key_arg is None:
@@ -246,6 +256,22 @@ class CryoemInitialModelTable(Table):
             prim_key,
             unique="ini_model_job_string",
             append="particle_classification_id",
+        )
+
+
+class ParticleTable(Table):
+    def __init__(self):
+        columns = [
+            "particle_id",
+            "motion_correction_id",
+            "coordinate_x",
+            "coordinate_y",
+        ]
+        super().__init__(
+            columns,
+            "particle_id",
+            unique=["motion_correction_id", "coordinate_x", "coordinate_y"],
+            required=["motion_correction_id", "coordinate_x", "coordinate_y"],
         )
 
 

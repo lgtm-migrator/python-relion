@@ -9,6 +9,7 @@ from relion.dbmodel.modeltables import (
     ParticleClassificationGroupTable,
     ParticleClassificationTable,
     ParticlePickerTable,
+    ParticleTable,
 )
 
 
@@ -70,6 +71,7 @@ class DBModel(collections.abc.Mapping):
             },
         )
 
+        self.particle_db_node = DBNode("ParticleTable", [ParticleTable()])
         self.class_group_db_node = DBNode(
             "ClassificationGroupTable",
             [ParticleClassificationGroupTable()],

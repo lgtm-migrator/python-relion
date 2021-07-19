@@ -1,4 +1,5 @@
 import logging
+import pathlib
 from collections import namedtuple
 
 from relion._parser.jobtype import JobType
@@ -11,12 +12,36 @@ ParticlePickerInfo = namedtuple(
         "number_of_particles",
         "micrograph_full_path",
         "first_micrograph_name",
+        "particles",
         "job",
+    ],
+)
+
+ParticleInfo = namedtuple(
+    "ParticleInfo",
+    [
+        "coordinate_x",
+        "coordinate_y",
+    ],
+)
+
+ParticleCacheRecord = namedtuple(
+    "ParticleCacheRecord",
+    [
+        "data",
+        "file_size",
     ],
 )
 
 
 class AutoPick(JobType):
+    def __init__(self, path, particle_cache=None):
+        super().__init__(path)
+        if particle_cache is None:
+            self._particle_cache = {}
+        else:
+            self._particle_cache = particle_cache
+
     def __eq__(self, other):
         if isinstance(other, AutoPick):  # check this
             return self._basepath == other._basepath
@@ -49,13 +74,70 @@ class AutoPick(JobType):
 
         first_mc_micrograph = mc_micrographs[0]
 
+        try:
+            file = self._read_star_file(jobdir, "summary.star")
+        except (RuntimeError, FileNotFoundError, ValueError):
+            return []
+
         particle_picker_info = []
         for mic, np in zip(mc_micrographs, all_particles):
+            particles = self._get_particle_info(jobdir, pathlib.Path(mic))
             particle_picker_info.append(
-                ParticlePickerInfo(int(np), mic, first_mc_micrograph, jobdir)
+                ParticlePickerInfo(int(np), mic, first_mc_micrograph, particles, jobdir)
             )
 
         return particle_picker_info
+
+    def _get_particle_info(self, jobdir, micrograph):
+        particle_data = []
+        particle_star_file = pathlib.Path(
+            str(
+                micrograph.relative_to(micrograph.parent.parent).with_suffix(".star")
+            ).replace(micrograph.stem, micrograph.stem + "_autopick")
+        )
+        if self._particle_cache.get(jobdir):
+            if self._particle_cache[jobdir].get(micrograph):
+                try:
+                    if (
+                        self._particle_cache[jobdir][micrograph].file_size
+                        == (self._basepath / jobdir / particle_star_file).stat().st_size
+                    ):
+                        return self._particle_cache[jobdir][micrograph].data
+                except FileNotFoundError:
+                    logger.debug(
+                        "Could not find expected file containing particle data",
+                        exc_info=True,
+                    )
+                    return []
+        else:
+            self._particle_cache[jobdir] = {}
+        try:
+            particle_star = self._read_star_file(jobdir, particle_star_file)
+        except (FileNotFoundError, RuntimeError, ValueError):
+            return particle_data
+        try:
+            info_table = self._find_table_from_column_name(
+                "_rlnCoordinateX", particle_star
+            )
+        except (FileNotFoundError, RuntimeError, ValueError):
+            return particle_data
+        if info_table is None:
+            logger.debug(
+                f"_rlnMicrographFrameNumber not found in file {particle_star_file}"
+            )
+            return particle_data
+        xs = self.parse_star_file("_rlnCoordinateX", particle_star, info_table)
+        ys = self.parse_star_file("_rlnCoordinateY", particle_star, info_table)
+        for x, y in zip(xs, ys):
+            particle_data.append(ParticleInfo(x, y))
+        try:
+            self._particle_cache[jobdir][micrograph] = ParticleCacheRecord(
+                particle_data,
+                (self._basepath / jobdir / particle_star_file).stat().st_size,
+            )
+        except FileNotFoundError:
+            return []
+        return particle_data
 
     @staticmethod
     def for_cache(partpickinfo):
@@ -69,6 +151,7 @@ class AutoPick(JobType):
                 "job_string": pi.job,
                 "micrograph_full_path": pi.micrograph_full_path,
                 "first_motion_correction_micrograph": pi.first_micrograph_name,
+                "particles": pi.particles,
             }
             for pi in partpickinfo
         ]
