@@ -291,20 +291,21 @@ class Project(RelionPipeline):
         if results is None:
             return msgs
         for node in self._db_model.db_nodes:
-            try:
-                if results[node.nodeid] is not None:
-                    d = {}
-                    for p in results[node.nodeid]:
-                        for key, val in p.items():
-                            try:
-                                d[key].extend(val)
-                            except KeyError:
-                                d[key] = val
-                    msgs.append(d)
-            except KeyError:
-                logger.debug(
-                    f"No results found for {node.name}: probably the job has not completed yet"
-                )
+            if node.name != "ParticleTable":
+                try:
+                    if results[node.nodeid] is not None:
+                        d = {}
+                        for p in results[node.nodeid]:
+                            for key, val in p.items():
+                                try:
+                                    d[key].extend(val)
+                                except KeyError:
+                                    d[key] = val
+                        msgs.append(d)
+                except KeyError:
+                    logger.debug(
+                        f"No results found for {node.name}: probably the job has not completed yet"
+                    )
         return msgs
 
     @property
