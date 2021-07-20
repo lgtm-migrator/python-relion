@@ -72,6 +72,15 @@ class DBModel(collections.abc.Mapping):
         )
 
         self.particle_db_node = DBNode("ParticleTable", [ParticleTable()])
+        self.mc_db_node.link_to(
+            self.particle_db_node,
+            traffic={
+                "check_for": "micrograph_full_path",
+                "foreign_key": "motion_correction_id",
+                "table_key": "motion_correction_id",
+                "foreign_table": self.mc_db_node.tables[0],
+            },
+        )
         self.class_group_db_node = DBNode(
             "ClassificationGroupTable",
             [ParticleClassificationGroupTable()],
@@ -137,6 +146,7 @@ class DBModel(collections.abc.Mapping):
             "Class2D": self.class2d_db_node,
             "InitialModel": self.class3d_db_node,
             "Class3D": self.class3d_db_node,
+            "Particles": self.particle_db_node,
         }
 
         return db_dict

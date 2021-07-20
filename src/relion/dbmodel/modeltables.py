@@ -390,3 +390,15 @@ def _(
     row.update({"resolution": relion_options.inimodel_resol_final})
     pid = primary_table.add_row(row)
     return pid
+
+
+@insert.register(ParticleTable)
+def _(
+    primary_table: ParticleTable,
+    end_time,
+    source,
+    relion_options,
+    row,
+):
+    pid = primary_table.add_row(row)
+    return pid

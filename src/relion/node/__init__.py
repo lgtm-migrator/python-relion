@@ -22,6 +22,7 @@ class Node:
         self._link_traffic = {}
         self._share_traffic = {}
         self._append_traffic = {}
+        self._free_pass = free_pass
         self._call_count = 0
         self._in_multi_call = False
         self._can_append = independent

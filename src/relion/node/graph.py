@@ -168,16 +168,15 @@ class Graph(Node):
         if (
             all(n in node._completed for n in node._in)
             and node.nodeid not in self._called_nodes
-        ):
+        ) or node._free_pass:
             called = True
-
             self._call_returns[node.nodeid] = node()
             self._called_nodes.append(node.nodeid)
 
         for next_node in node:
             next_node.environment.update_prop(node.environment.propagate)
             next_traffic = node._link_traffic.get(next_node.nodeid, {})
-            if next_traffic is None:
+            if next_traffic is None and called:
                 next_traffic = self._call_returns[node.nodeid]
             next_share = []
             if node._share_traffic.get(next_node.nodeid) is not None:

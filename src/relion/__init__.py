@@ -85,7 +85,7 @@ class Project(RelionPipeline):
             raise ValueError(f"path {self.basepath} is not a directory")
         self._data_pipeline = Graph("DataPipeline", [])
         self._db_model = DBModel(database)
-        self._particle_unpack = DecompNode("Particles")
+        self._particle_unpack = DecompNode("Particles", free_pass=True)
         self._drift_cache = {}
         if run_options is None:
             self.run_options = RelionItOptions()
@@ -221,14 +221,28 @@ class Project(RelionPipeline):
                     )
                     jobnode.link_to(
                         self._particle_unpack,
-                        share=[("job", "job"), ("result", "data")],
+                        share=[
+                            ("job", "job"),
+                            ("result", "data"),
+                            ("end_time_stamp", "end_time"),
+                        ],
                         traffic={
                             "unpack": "particles",
                             "labels": ["coordinate_x", "coordinate_y"],
                             "meta_labels": ["micrograph_full_path"],
                         },
                     )
+                    self._particle_unpack.link_to(
+                        self._db_model["Particles"],
+                        share=[("end_time", "end_time")],
+                        result_as_traffic=True,
+                    )
                     self._data_pipeline.add_node(self._particle_unpack)
+                    if (
+                        self._db_model["Particles"]
+                        not in self._data_pipeline._node_list
+                    ):
+                        self._data_pipeline.add_node(self._db_model["Particles"])
                 elif "crYOLO" in jobnode.environment.get("alias"):
                     self._update_pipeline(
                         jobnode,
