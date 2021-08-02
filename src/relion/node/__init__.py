@@ -12,7 +12,7 @@ class Node:
     and child nodes are kept in _in and _out.
     """
 
-    def __init__(self, name, independent=False, **kwargs):
+    def __init__(self, name, independent=False, free_pass=False, **kwargs):
         self._name = name
         self.nodeid = str(uuid.uuid4())[:8]
         self._out = []
