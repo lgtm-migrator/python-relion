@@ -73,7 +73,12 @@ class Project(RelionPipeline):
     """
 
     def __init__(
-        self, path, database="ISPyB", run_options=None, message_constructors=None, cluster=False
+        self,
+        path,
+        database="ISPyB",
+        run_options=None,
+        message_constructors=None,
+        cluster=False,
     ):
         """
         Create an object representing a Relion project.
@@ -237,6 +242,8 @@ class Project(RelionPipeline):
                 self._data_pipeline.add_node(jobnode)
                 if jobnode.name == "Import":
                     self._data_pipeline.origins = [jobnode]
+        if cluster:
+            self.collect_cluster_info(self.basepath)
 
     def _update_pipeline(self, jobnode, label, prop=None, in_db_model=True):
         jobnode.environment["result"] = self._results_dict[label]
@@ -256,8 +263,6 @@ class Project(RelionPipeline):
         self._data_pipeline.add_node(jobnode)
         if in_db_model:
             self._data_pipeline.add_node(self._db_model[label])
-        if cluster:
-            self.collect_cluster_info(self.basepath)
 
     @property
     def cluster_info(self):
