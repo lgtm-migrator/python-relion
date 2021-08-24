@@ -267,6 +267,18 @@ class CryoemInitialModelTable(Table):
         )
 
 
+class ClusterJobTable(Table):
+    def __init__(self):
+        columns = ["job_name", "job_id", "per_micrograph", "micrograph_count"]
+        prim_key = "job_id"
+        super().__init__(
+            columns,
+            prim_key,
+            unique="job_id",
+            required="job_id",
+        )
+
+
 @functools.singledispatch
 def insert(primary_table, end_time, source, relion_options, **kwargs):
     raise ValueError(f"{primary_table!r} is not a known Table")
