@@ -27,6 +27,7 @@ except ModuleNotFoundError:
     pass
 import logging
 
+from relion._parser.clusternode import ClusterNode
 from relion.dbmodel import DBGraph, DBModel, DBNode
 from relion.node.graph import Graph
 
@@ -96,6 +97,7 @@ class Project(RelionPipeline):
         if not self.basepath.is_dir():
             raise ValueError(f"path {self.basepath} is not a directory")
         self._data_pipeline = Graph("DataPipeline", [])
+        self._cluster_graph = Graph("ClusterGraph", [])
         self._db_model = DBModel(database)
         self._drift_cache = {}
         if run_options is None:
@@ -215,6 +217,19 @@ class Project(RelionPipeline):
         self.collect_job_times(
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
+        if cluster:
+            cluster_node = ClusterNode("cluster-node", self.cluster_info)
+            cluster_node.environment["end_time_stamp"] = max(
+                p.environment["end_time_stamp"] for p in self
+            )
+            cluster_node.link_to(
+                self._db_model._cluster["ClusterJobs"],
+                result_as_traffic=True,
+                share=[("end_time_stamp", "end_time")],
+            )
+            self._cluster_graph.add_node(cluster_node)
+            self._cluster_graph.add_node(self._db_model._cluster["ClusterJobs"])
+
         for jobnode in self:
             if self._results_dict.get(
                 jobnode.name
@@ -242,8 +257,6 @@ class Project(RelionPipeline):
                 self._data_pipeline.add_node(jobnode)
                 if jobnode.name == "Import":
                     self._data_pipeline.origins = [jobnode]
-        if cluster:
-            self.collect_cluster_info(self.basepath)
 
     def _update_pipeline(self, jobnode, label, prop=None, in_db_model=True):
         jobnode.environment["result"] = self._results_dict[label]
@@ -269,12 +282,12 @@ class Project(RelionPipeline):
         info = []
         self.collect_all_cluster_info(self.basepath)
         for jn in self._job_nodes:
-            counts = [c for c in jn.attributes["cluster_job_mic_counts"] if c]
+            counts = [c for c in jn.environment["cluster_job_mic_counts"] if c]
             ids = [
                 i
                 for i, c in zip(
-                    jn.attributes["cluster_job_ids"],
-                    jn.attributes["cluster_job_mic_counts"],
+                    jn.environment["cluster_job_ids"],
+                    jn.environment["cluster_job_mic_counts"],
                 )
                 if c or jn not in self.preprocess
             ]

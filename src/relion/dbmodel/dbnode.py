@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import prometheus_client
+
 from relion.dbmodel import modeltables
 from relion.node import Node
 
@@ -185,3 +187,28 @@ class DBNode(Node):
         for key in need_to_pop:
             messages.pop(key)
         return messages
+
+
+_job_count = prometheus_client.Counter(
+    "cluster_job_count", "Total number of cluster jobs submitted by this instance"
+)
+
+
+class PrometheusNode(DBNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._job_count = _job_count
+
+    def func(self, *args, **kwargs):
+        if self.environment.empty:
+            return []
+        extra_options = self.environment["extra_options"]
+        if self.environment["end_time"] is not None:
+            end_time = datetime.timestamp(self.environment["end_time"])
+        else:
+            end_time = None
+        self.insert(end_time, extra_options)
+        for tab_index, ids in enumerate(self._unsent):
+            for pid in ids:
+                self._job_count.inc()
+        return

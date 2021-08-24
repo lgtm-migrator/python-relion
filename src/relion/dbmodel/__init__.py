@@ -1,8 +1,9 @@
 import collections.abc
 
 from relion.dbmodel.dbgraph import DBGraph
-from relion.dbmodel.dbnode import DBNode
+from relion.dbmodel.dbnode import DBNode, PrometheusNode
 from relion.dbmodel.modeltables import (
+    ClusterJobTable,
     CryoemInitialModelTable,
     CTFTable,
     MotionCorrectionTable,
@@ -15,6 +16,9 @@ from relion.dbmodel.modeltables import (
 class DBModel(collections.abc.Mapping):
     def __init__(self, db_name):
         self._db = self._make_db(db_name)
+        self._cluster = {
+            "ClusterJobs": PrometheusNode("ClusterJobTable", [ClusterJobTable()])
+        }
 
     def __getitem__(self, key):
         return self._db[key]

@@ -22,14 +22,14 @@ def run():
                 print(f"Current job: {current_job._path} [alias={alias}]")
             else:
                 print(f"Current job: {current_job._path}")
-            print(f"Job started at: {current_job.attributes['start_time_stamp']}")
-            print(f"Job has been run {current_job.attributes['job_count']} time(s)")
-            if current_job.attributes["cluster_job_id"]:
+            print(f"Job started at: {current_job.environment['start_time_stamp']}")
+            print(f"Job has been run {current_job.environment['job_count']} time(s)")
+            if current_job.environment["cluster_job_id"]:
                 print(
-                    f"Job running with cluster id: {current_job.attributes['cluster_job_id']}"
+                    f"Job running with cluster id: {current_job.environment['cluster_job_id']}"
                 )
                 qstat = subprocess.run(
-                    ["qstat", "-j", current_job.attributes["cluster_job_id"]],
+                    ["qstat", "-j", current_job.environment["cluster_job_id"]],
                     capture_output=True,
                 )
                 qstat_output = qstat.stdout.decode("utf-8")
@@ -48,7 +48,7 @@ def run():
                     print(f"cluster job has status: {job_state}")
                 else:
                     print(
-                        f"cluster job {current_job.attributes['cluster_job_id']} not found"
+                        f"cluster job {current_job.environment['cluster_job_id']} not found"
                     )
             print()
 
