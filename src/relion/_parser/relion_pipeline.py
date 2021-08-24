@@ -345,12 +345,12 @@ class RelionPipeline:
                     cluster_id = line.split()[-1]
                     break
             else:
-                return None
+                return []
             if cluster_id.isnumeric():
                 return cluster_id
-            return None
+            return []
         except FileNotFoundError:
-            return None
+            return []
 
     def _all_cluster_ids(self, log_path):
         try:
@@ -359,9 +359,9 @@ class RelionPipeline:
             ]
             if all(cid.isnumeric() for cid in cluster_ids):
                 return [int(cid) for cid in cluster_ids]
-            return None
+            return []
         except FileNotFoundError:
-            return None
+            return []
 
     def _number_of_mics_run(self, log_path):
         try:
@@ -379,7 +379,7 @@ class RelionPipeline:
                     mic_counts[job_count - 1] += 1
             return mic_counts
         except FileNotFoundError:
-            return None
+            return []
 
     def _get_pipeline_jobs(self, logfile):
         if logfile is None:

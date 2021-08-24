@@ -220,7 +220,9 @@ class Project(RelionPipeline):
         if cluster:
             cluster_node = ClusterNode("cluster-node", self.cluster_info)
             cluster_node.environment["end_time_stamp"] = max(
-                p.environment["end_time_stamp"] for p in self
+                p.environment["end_time_stamp"]
+                for p in self
+                if p.environment["end_time_stamp"] is not None
             )
             cluster_node.link_to(
                 self._db_model._cluster["ClusterJobs"],
@@ -229,6 +231,7 @@ class Project(RelionPipeline):
             )
             self._cluster_graph.add_node(cluster_node)
             self._cluster_graph.add_node(self._db_model._cluster["ClusterJobs"])
+            self._cluster_graph.origins = [cluster_node]
 
         for jobnode in self:
             if self._results_dict.get(

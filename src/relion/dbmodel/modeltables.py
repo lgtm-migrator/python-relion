@@ -284,6 +284,18 @@ def insert(primary_table, end_time, source, relion_options, **kwargs):
     raise ValueError(f"{primary_table!r} is not a known Table")
 
 
+@insert.register(ClusterJobTable)
+def _(
+    primary_table: ClusterJobTable,
+    end_time,
+    source,
+    relion_options,
+    row,
+):
+    pid = primary_table.add_row(row)
+    return pid
+
+
 @insert.register(MotionCorrectionTable)
 def _(
     primary_table: MotionCorrectionTable,
