@@ -22,8 +22,9 @@ def run():
     parser.add_argument("-c", "--command", dest="command")
     parser.add_argument("--id", dest="job_id")
     args = parser.parse_args()
+    base_cmd = args.command.split()[0]
     if args.start:
-        _job_count.labels(args.command, args.job_id).inc()
-        _current_job_count.labels(args.command, args.job_id).inc()
+        _job_count.labels(base_cmd, args.job_id).inc()
+        _current_job_count.labels(base_cmd, args.job_id).inc()
     if args.end:
-        _current_job_count.labels(args.command, args.job_id).dec()
+        _current_job_count.labels(base_cmd, args.job_id).dec()
