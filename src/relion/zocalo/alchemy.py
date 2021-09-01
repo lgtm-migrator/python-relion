@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, Column, String, Text, text
+from sqlalchemy import Column, Text
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -49,30 +49,10 @@ class ClusterMonitoring(Base):
         comment="Reference to the AutoProcProgram the cluster job is attached to",
         autoincrement=False,
     )
-    command = Column(
-        String(250),
-        comment="Reference to the AutoProcProgram the cluster job is attached to",
+    prometheus_text = Column(
+        Text,
+        comment="Full prometheus format text with which to update http server",
     )
-    event_time = Column(
-        TIMESTAMP,
-        nullable=False,
-        index=True,
-        server_default=text("current_timestamp() ON UPDATE current_timestamp()"),
-        comment="Time of event",
-    )
-    event_type = Column(
-        String(10),
-        comment="Type of event being recorded. May be start, success or failure",
-    )
-    cluster = Column(
-        String(250),
-        comment="Name of the cluster the job ran on",
-    )
-    host_name = Column(
-        String(250),
-        comment="Name of the host the job ran on",
-    )
-    output_details = Column(Text, comment="Full output of wrapped command")
 
 
 def buffer_url() -> str:
