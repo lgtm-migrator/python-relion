@@ -325,16 +325,16 @@ class RelionPipeline:
 
     def collect_cluster_info(self, basepath):
         for job in self._job_nodes:
-            job.attributes["cluster_job_id"] = self._latest_cluster_id(
+            job.environment["cluster_job_id"] = self._latest_cluster_id(
                 basepath / job._path / "run.out"
             )
 
     def collect_all_cluster_info(self, basepath):
         for job in self._job_nodes:
-            job.attributes["cluster_job_ids"] = self._all_cluster_ids(
+            job.environment["cluster_job_ids"] = self._all_cluster_ids(
                 basepath / job._path / "run.out"
             )
-            job.attributes["cluster_job_mic_counts"] = self._number_of_mics_run(
+            job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
                 basepath / job._path / "run.out"
             )
 

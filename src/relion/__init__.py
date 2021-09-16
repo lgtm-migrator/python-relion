@@ -224,7 +224,23 @@ class Project(RelionPipeline):
         self.collect_job_times(
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
+        if cluster:
+            self.collect_all_cluster_info(self.basepath)
+            self._data_pipeline.add_node(self._db_model["ClusterJobs"])
         for jobnode in self:
+            if jobnode.environment["cluster_job_ids"]:
+                msg = [
+                    {"job_id": jid, "micrograph_count": nm}
+                    for jid, nm in zip(
+                        jobnode.environment["cluster_job_ids"],
+                        jobnode.environment["cluster_job_mic_counts"],
+                    )
+                ]
+                jobnode.link_to(
+                    self._db_model["ClusterJobs"],
+                    traffic=msg,
+                    share=[("end_time_stamp", "end_time")],
+                )
             if (
                 self._results_dict.get(jobnode.name)
                 or jobnode.environment.get("alias") in self._results_dict
@@ -257,8 +273,6 @@ class Project(RelionPipeline):
                 self._data_pipeline.add_node(jobnode)
                 if jobnode.name == "Import":
                     self._data_pipeline.origins = [jobnode]
-        if cluster:
-            self.collect_cluster_info(self.basepath)
 
     def _update_pipeline(self, jobnode, label, prop=None, in_db_model=True):
         jobnode.environment["result"] = self._results_dict[label]

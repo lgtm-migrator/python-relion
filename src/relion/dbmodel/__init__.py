@@ -3,6 +3,7 @@ import collections.abc
 from relion.dbmodel.dbgraph import DBGraph
 from relion.dbmodel.dbnode import DBNode
 from relion.dbmodel.modeltables import (
+    ClusterJobTable,
     CryoemInitialModelTable,
     CTFTable,
     MotionCorrectionTable,
@@ -53,6 +54,8 @@ class DBModel(collections.abc.Mapping):
             raise ValueError(f"{db_name} not implmented in relion.dbmodel.DBModel")
 
     def _make_ispyb_model(self):
+        self.cluster_job_node = DBNode("ClusterJobs", [ClusterJobTable()])
+
         self.mc_db_node = DBNode("MCTable", [MotionCorrectionTable()])
 
         self.ctf_db_node = DBNode("CTFTable", [CTFTable()])
@@ -149,6 +152,7 @@ class DBModel(collections.abc.Mapping):
         )
 
         db_dict = {
+            "ClusterJobs": self.cluster_job_node,
             "MotionCorr": self.mc_db_node,
             "CtfFind": self.ctf_db_node,
             "AutoPick": self.parpick_db_node,

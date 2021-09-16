@@ -283,7 +283,7 @@ class RelativeIceThicknessTable(Table):
 
 class ClusterJobTable(Table):
     def __init__(self):
-        columns = ["job_name", "job_id", "per_micrograph", "micrograph_count"]
+        columns = ["job_name", "job_id", "micrograph_count"]
         prim_key = "job_id"
         super().__init__(
             columns,
@@ -419,6 +419,17 @@ def _(
 @insert.register(RelativeIceThicknessTable)
 def _(
     primary_table: RelativeIceThicknessTable,
+    end_time,
+    source,
+    relion_options,
+    row,
+):
+    pid = primary_table.add_row(row)
+    return pid
+    
+@insert.register(ClusterJobTable)
+def _(
+    primary_table: ClusterJobTable,
     end_time,
     source,
     relion_options,
