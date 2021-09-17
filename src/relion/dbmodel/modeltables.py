@@ -283,13 +283,13 @@ class RelativeIceThicknessTable(Table):
 
 class ClusterJobTable(Table):
     def __init__(self):
-        columns = ["job_name", "job_id", "micrograph_count"]
+        columns = ["job_name", "job_id", "micrograph_count", "command"]
         prim_key = "job_id"
         super().__init__(
             columns,
             prim_key,
             unique="job_id",
-            required="job_id",
+            required=["job_id", "command"],
         )
 
 

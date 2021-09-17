@@ -7,7 +7,7 @@ import pathlib
 import threading
 import time
 from pprint import pprint
-from typing import Union
+from typing import Optional
 
 import zocalo.util.symlink
 import zocalo.wrapper
@@ -16,6 +16,7 @@ import relion
 from relion.cryolo_relion_it import cryolo_relion_it, dls_options, icebreaker_histogram
 from relion.cryolo_relion_it.cryolo_relion_it import RelionItOptions
 from relion.dbmodel.modeltables import (
+    ClusterJobTable,
     CryoemInitialModelTable,
     CTFTable,
     MotionCorrectionTable,
@@ -491,6 +492,28 @@ def _(table: ParticlePickerTable, primary_key: int, **kwargs):
 
 
 @functools.singledispatch
+def prom_monitor(table, primary_key, **kwargs):
+    return []
+
+
+@prom_monitor.register(ClusterJobTable)
+def _(table: ClusterJobTable, primary_key: int, **kwargs):
+    row = table.get_row_by_primary_key(primary_key)
+    if row["command"] == "relion_run_motioncorr_mpi":
+        return {
+            "recipe": "relion_prometheus_metrics",
+            "parameters": {
+                "cluster": "hamilton",
+                "event": "info",
+                "command": row["command"],
+                "cluster_job_id": row["job_id"],
+                "num_corrected_micrographs": row["num_micrographs"],
+            },
+        }
+    return {}
+
+
+@functools.singledispatch
 def construct_message(table, primary_key, resend=False, unsent_appended=None):
     raise ValueError(f"{table!r} is not a known Table")
 
@@ -500,7 +523,7 @@ def _(
     table: MotionCorrectionTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     drift_data = row["drift_data"]
@@ -524,7 +547,7 @@ def _(
     table: CTFTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["motion_correction_id", "ctf_id"]
@@ -562,7 +585,7 @@ def _(
     table: ParticlePickerTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = [
@@ -604,7 +627,7 @@ def _(
     table: ParticleClassificationGroupTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["particle_picker_id", "particle_classification_group_id"]
@@ -642,7 +665,7 @@ def _(
     table: ParticleClassificationTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["particle_classification_group_id", "particle_classification_id"]
@@ -680,7 +703,7 @@ def _(
     table: CryoemInitialModelTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     if unsent_appended is None:
         unsent_appended = {}
