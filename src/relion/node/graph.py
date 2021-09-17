@@ -172,6 +172,11 @@ class Graph(Node):
         if (
             all(n in node._completed for n in node._in)
             and node.nodeid not in self._called_nodes
+            and all(
+                (n.nodeid, node.nodeid) in self._traversed
+                for n in node._in
+                if n in self._node_list
+            )
         ):
             called = True
 
@@ -181,8 +186,10 @@ class Graph(Node):
         for next_node in node:
             next_node.environment.update_prop(node.environment.propagate)
             next_traffic = node._link_traffic.get(next_node.nodeid, {})
-            if next_traffic is None:
+            if next_traffic is None and called:
                 next_traffic = self._call_returns[node.nodeid]
+            elif next_traffic is None:
+                next_traffic = {}
             next_share = []
             if node._share_traffic.get(next_node.nodeid) is not None:
                 for sh in node._share_traffic[next_node.nodeid]:

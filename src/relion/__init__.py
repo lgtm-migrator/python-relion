@@ -213,6 +213,13 @@ class Project(RelionPipeline):
         # reset the in and out lists of database nodes
         # have to avoid removing the permanent connections from other database nodes
         for dbn in self._db_model.values():
+            if isinstance(dbn, DBGraph):
+                for n in dbn._node_list:
+                    for i_node in n._in:
+                        if not isinstance(i_node, DBNode) and not isinstance(
+                            i_node, DBGraph
+                        ):
+                            n._in.remove(i_node)
             dbn._in = [
                 i_node
                 for i_node in dbn._in
@@ -228,7 +235,10 @@ class Project(RelionPipeline):
             self.collect_all_cluster_info(self.basepath)
             self._data_pipeline.add_node(self._db_model["ClusterJobs"])
         for jobnode in self:
-            if jobnode.environment["cluster_job_ids"]:
+            if jobnode.environment["cluster_job_ids"] and (
+                jobnode.name in ["MotionCorr", "CtfFind", "ParticlePicker"]
+                or "crYOLO" in jobnode.environment.get("alias")
+            ):
                 msg = [
                     {"job_id": jid, "micrograph_count": nm}
                     for jid, nm in zip(
