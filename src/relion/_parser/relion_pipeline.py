@@ -337,6 +337,9 @@ class RelionPipeline:
             job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
                 basepath / job._path / "run.out"
             )
+            job.environment["cluster_command"] = self._get_command(
+                basepath / job._path / "note.txt"
+            )
 
     def _latest_cluster_id(self, log_path):
         try:
@@ -378,6 +381,15 @@ class RelionPipeline:
                 ):
                     mic_counts[job_count - 1] += 1
             return mic_counts
+        except FileNotFoundError:
+            return None
+
+    def _get_command(self, log_path):
+        try:
+            for line in open(log_path):
+                if "which" in line:
+                    cmd = line.split()[1].replace("`", "")
+            return cmd
         except FileNotFoundError:
             return None
 

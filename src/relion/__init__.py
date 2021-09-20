@@ -239,8 +239,9 @@ class Project(RelionPipeline):
                 jobnode.name in ["MotionCorr", "CtfFind", "ParticlePicker"]
                 or "crYOLO" in jobnode.environment.get("alias")
             ):
+                cmd = jobnode.environment["cluster_command"]
                 msg = [
-                    {"job_id": jid, "micrograph_count": nm}
+                    {"job_id": jid, "micrograph_count": nm, "command": cmd}
                     for jid, nm in zip(
                         jobnode.environment["cluster_job_ids"],
                         jobnode.environment["cluster_job_mic_counts"],
