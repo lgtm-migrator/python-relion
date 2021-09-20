@@ -516,7 +516,7 @@ def _(table: ClusterJobTable, primary_key: int, appid: int, **kwargs):
 
 
 @functools.singledispatch
-def construct_message(table, primary_key, resend=False, unsent_appended=None):
+def construct_message(table, primary_key, resend=False, unsent_appended=None, **kwargs):
     raise ValueError(f"{table!r} is not a known Table")
 
 
@@ -526,6 +526,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     row = table.get_row_by_primary_key(primary_key)
     drift_data = row["drift_data"]
@@ -550,6 +551,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["motion_correction_id", "ctf_id"]
@@ -588,6 +590,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = [
@@ -630,6 +633,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["particle_picker_id", "particle_classification_group_id"]
@@ -668,6 +672,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["particle_classification_group_id", "particle_classification_id"]
@@ -706,6 +711,7 @@ def _(
     primary_key: int,
     resend: bool = False,
     unsent_appended: Optional[dict] = None,
+    **kwargs,
 ):
     if unsent_appended is None:
         unsent_appended = {}
