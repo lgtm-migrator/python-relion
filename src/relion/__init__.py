@@ -80,6 +80,7 @@ class Project(RelionPipeline):
         run_options=None,
         message_constructors=None,
         cluster=False,
+        appid=None,
     ):
         """
         Create an object representing a Relion project.
@@ -99,6 +100,7 @@ class Project(RelionPipeline):
         self._data_pipeline = Graph("DataPipeline", [])
         self._db_model = DBModel(database)
         self._drift_cache = {}
+        self.appid = appid
         if run_options is None:
             self.run_options = RelionItOptions()
         else:
@@ -239,6 +241,8 @@ class Project(RelionPipeline):
                 jobnode.name in ["MotionCorr", "CtfFind", "ParticlePicker"]
                 or "crYOLO" in jobnode.environment.get("alias")
             ):
+                if self._db_model["ClusterJobs"].environment["appid"] is None:
+                    self._db_model["ClusterJobs"].environment["appid"] = self.appid
                 cmd = jobnode.environment["cluster_command"]
                 msg = [
                     {"job_id": jid, "micrograph_count": nm, "command": cmd}

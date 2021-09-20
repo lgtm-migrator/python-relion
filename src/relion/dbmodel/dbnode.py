@@ -160,12 +160,14 @@ class DBNode(Node):
                             pid,
                             resend=True,
                             unsent_appended=unsent_appended,
+                            appid=self.environment["appid"],
                         )
                     else:
                         message = constructor(
                             self.tables[tab_index],
                             pid,
                             unsent_appended=unsent_appended,
+                            appid=self.environment["appid"],
                         )
                     if isinstance(message, dict):
                         messages[msg_type].append(message)

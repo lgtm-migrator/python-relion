@@ -140,6 +140,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
                 "images": images_msgs,
                 "images_particles": images_particles_msgs,
             },
+            appid=self.recwrap.recipe_step["parameters"]["program_id"],
         )
 
         while not relion_prj.origin_present() or not preprocess_check.is_file():
@@ -492,12 +493,12 @@ def _(table: ParticlePickerTable, primary_key: int, **kwargs):
 
 
 @functools.singledispatch
-def prom_monitor(table, primary_key, **kwargs):
+def prom_monitor(table, primary_key, appid, **kwargs):
     return []
 
 
 @prom_monitor.register(ClusterJobTable)
-def _(table: ClusterJobTable, primary_key: int, **kwargs):
+def _(table: ClusterJobTable, primary_key: int, appid: int, **kwargs):
     row = table.get_row_by_primary_key(primary_key)
     if row["command"] == "relion_run_motioncorr_mpi":
         return {
@@ -508,6 +509,7 @@ def _(table: ClusterJobTable, primary_key: int, **kwargs):
                 "command": row["command"],
                 "cluster_job_id": row["job_id"],
                 "num_corrected_micrographs": row["num_micrographs"],
+                "auto_proc_program_id": appid,
             },
         }
     return {}
