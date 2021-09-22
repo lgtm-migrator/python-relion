@@ -139,6 +139,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
                 "ispyb": construct_message,
                 "images": images_msgs,
                 "images_particles": images_particles_msgs,
+                "prometheus": prom_monitor,
             },
             appid=self.recwrap.recipe_step["parameters"]["program_id"],
         )
