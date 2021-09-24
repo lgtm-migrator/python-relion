@@ -389,7 +389,8 @@ class RelionPipeline:
             for line in open(log_path):
                 if "which" in line:
                     cmd = line.split()[1].replace("`", "")
-            return cmd
+                    return cmd
+            return None
         except FileNotFoundError:
             return None
 

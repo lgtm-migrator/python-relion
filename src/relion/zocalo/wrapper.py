@@ -142,6 +142,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
                 "prometheus": prom_monitor,
             },
             appid=self.recwrap.recipe_step["parameters"]["program_id"],
+            cluster=True,
         )
 
         while not relion_prj.origin_present() or not preprocess_check.is_file():
@@ -149,7 +150,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
             if time.time() - relion_started > 10 * 60:
                 break
 
-        relion_prj.load()
+        relion_prj.load(cluster=True)
 
         preproc_recently_run = False
         processing_ended = False
@@ -178,7 +179,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
                 for p in self.results_directory.glob("RUNNING_*"):
                     p.unlink()
 
-            relion_prj.load()
+            relion_prj.load(cluster=True)
 
             # Should only return results that have not previously been sent
 
@@ -509,7 +510,7 @@ def _(table: ClusterJobTable, primary_key: int, appid: int, **kwargs):
                 "event": "info",
                 "command": row["command"],
                 "cluster_job_id": row["job_id"],
-                "num_corrected_micrographs": row["num_micrographs"],
+                "num_corrected_micrographs": row["micrograph_count"],
                 "auto_proc_program_id": appid,
             },
         }
@@ -518,7 +519,8 @@ def _(table: ClusterJobTable, primary_key: int, appid: int, **kwargs):
 
 @functools.singledispatch
 def construct_message(table, primary_key, resend=False, unsent_appended=None, **kwargs):
-    raise ValueError(f"{table!r} is not a known Table")
+    return {}
+    # raise ValueError(f"{table!r} is not a known Table")
 
 
 @construct_message.register(MotionCorrectionTable)

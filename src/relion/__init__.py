@@ -251,6 +251,9 @@ class Project(RelionPipeline):
                         jobnode.environment["cluster_job_mic_counts"],
                     )
                 ]
+                self._db_model["ClusterJobs"].environment[
+                    "message_constructors"
+                ] = self.construct_messages
                 jobnode.link_to(
                     self._db_model["ClusterJobs"],
                     traffic=msg,
