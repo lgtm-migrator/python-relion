@@ -25,6 +25,7 @@ class Node:
         self._call_count = 0
         self._in_multi_call = False
         self._can_append = independent
+        self._thread = None
         self.shape = "oval"
         for key, value in kwargs.items():
             self.environment[key] = value

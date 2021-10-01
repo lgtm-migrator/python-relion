@@ -1,3 +1,5 @@
+import threading
+
 from relion.node import Node
 
 try:
@@ -173,10 +175,11 @@ class Graph(Node):
             all(n in node._completed for n in node._in)
             and node.nodeid not in self._called_nodes
         ):
-            called = True
+            # called = True
 
-            self._call_returns[node.nodeid] = node()
-            self._called_nodes.append(node.nodeid)
+            node._thread = threading.Thread(target=node(), name=node.name, daemon=True)
+            # self._call_returns[node.nodeid] = node()
+            # self._called_nodes.append(node.nodeid)
 
         for next_node in node:
             next_node.environment.update_prop(node.environment.propagate)
