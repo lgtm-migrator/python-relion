@@ -124,7 +124,7 @@ def test_process_graph_link_from_to_does_the_linking_correctly(
 
 
 def test_process_graph_remove_node_and_check_links_still_work(
-    graph, next_node_01, next_node_02
+    next_node_01, next_node_02
 ):
     # Can't use graph fixture here as linking a child node to a new node wouldn't change the parent node in the way required for a fixture
     node = Node("A")

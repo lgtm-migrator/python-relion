@@ -1,4 +1,5 @@
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from relion.node import Node
 
@@ -9,7 +10,7 @@ except ImportError:
 
 
 class Graph(Node):
-    def __init__(self, name, node_list, auto_connect=False):
+    def __init__(self, name, node_list, auto_connect=False, pool_size=5):
         super().__init__(name)
         self._node_list = node_list
         try:
@@ -17,8 +18,11 @@ class Graph(Node):
         except IndexError:
             self.origins = []
         self._call_returns = {}
+        self._running = []
         self._called_nodes = []
         self._traversed = []
+        self._pool_size = pool_size
+        self._running = []
         if auto_connect:
             self._check_connections()
 
@@ -59,8 +63,10 @@ class Graph(Node):
         if self._in_multi_call:
             for node in self.origins:
                 node._completed = self._completed
-        self.traverse()
+        lock = threading.RLock()
+        self.traverse(lock)
         self._traversed = []
+        self._running = []
         self._called_nodes = []
         for node in self.nodes:
             node.environment.reset()
@@ -156,16 +162,22 @@ class Graph(Node):
         else:
             return False
 
-    def traverse(self):
-        for o in self.origins:
-            self._follow(o, traffic={}, share=[], append=o._can_append)
+    def traverse(self, lock: threading.RLock):
+        with ThreadPoolExecutor(max_workers=self._pool_size) as pool:
+            self._running = [
+                pool.submit(self._follow, o, {}, [], pool, lock, append=o._can_append)
+                for o in self.origins
+            ]
+            # print(self, len(self._call_returns), len(self._node_list), self._node_list)
+            while len(self._call_returns) < len(self._node_list):
+                # print(self, len(self._call_returns), len(self._node_list), self._node_list)
+                [r.result() for r in self._running]
+            # [r.result() for r in self._running]
 
-    def _follow(self, node, traffic, share, append=False):
+    def _follow(self, node, traffic, share, pool, lock, run=True, append=False):
         called = False
         if node not in self.nodes:
             return
-        if node.nodeid in self._called_nodes:
-            called = True
         node.environment.update(traffic, can_append_list=append)
 
         for sh in share:
@@ -174,37 +186,42 @@ class Graph(Node):
         if (
             all(n in node._completed for n in node._in)
             and node.nodeid not in self._called_nodes
+            and run
         ):
-            # called = True
+            called = True
 
-            node._thread = threading.Thread(target=node(), name=node.name, daemon=True)
-            # self._call_returns[node.nodeid] = node()
-            # self._called_nodes.append(node.nodeid)
+            self._call_returns[node.nodeid] = node(__lock__=lock)
+            self._called_nodes.append(node.nodeid)
 
         for next_node in node:
-            next_node.environment.update_prop(node.environment.propagate)
+            with lock:
+                next_node.environment.update_prop(node.environment.propagate)
             next_traffic = node._link_traffic.get(next_node.nodeid, {})
             if next_traffic is None:
-                next_traffic = self._call_returns[node.nodeid]
+                next_traffic = self._call_returns.get(node.nodeid) or {}
             next_share = []
             if node._share_traffic.get(next_node.nodeid) is not None:
                 for sh in node._share_traffic[next_node.nodeid]:
                     next_share.append((node.environment[sh[0]], sh[1]))
             if (node.nodeid, next_node.nodeid) not in self._traversed and called:
-                self._traversed.append((node.nodeid, next_node.nodeid))
-                self._follow(
-                    next_node,
-                    next_traffic,
-                    next_share,
-                    append=node._can_append,
-                )
-            elif not called:
-                self._follow(
-                    next_node,
-                    next_traffic,
-                    next_share,
-                    append=node._can_append,
-                )
+                with lock:
+                    run_next = (
+                        len([p for p in self._traversed if p[1] == next_node.nodeid])
+                        == len(next_node._in) - 1
+                    )
+                    self._traversed.append((node.nodeid, next_node.nodeid))
+                    self._running.append(
+                        pool.submit(
+                            self._follow,
+                            next_node,
+                            next_traffic,
+                            next_share,
+                            pool,
+                            lock,
+                            run=run_next,
+                            append=node._can_append,
+                        )
+                    )
 
     def show(self):
         try:

@@ -180,7 +180,7 @@ def set_base(base, env: Environment):
 
 
 @set_base.register(type(None))
-def _(base: type(None), env: Environment):
+def _(base: None, env: Environment):
     env.base = {}
     env.iterate = Iterate(["__do not iterate__"])
 
