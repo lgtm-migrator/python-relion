@@ -1,5 +1,6 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 from relion.node import Node
 
@@ -63,8 +64,11 @@ class Graph(Node):
         if self._in_multi_call:
             for node in self.origins:
                 node._completed = self._completed
-        lock = threading.RLock()
-        self.traverse(lock)
+        if kwargs.get("__lock__"):
+            lock = kwargs["__lock__"]
+        else:
+            lock = threading.RLock()
+        self.traverse(lock, pool=kwargs.get("__pool__"))
         self._traversed = []
         self._running = []
         self._called_nodes = []
@@ -108,7 +112,8 @@ class Graph(Node):
 
     def add_node(self, new_node, auto_connect=False):
         if isinstance(new_node, Node):
-            self._node_list.append(new_node)
+            if new_node not in self._node_list:
+                self._node_list.append(new_node)
             if auto_connect:
                 for i_node in new_node._in:
                     if i_node not in self._node_list:
@@ -162,17 +167,26 @@ class Graph(Node):
         else:
             return False
 
-    def traverse(self, lock: threading.RLock):
-        with ThreadPoolExecutor(max_workers=self._pool_size) as pool:
+    def traverse(
+        self, lock: threading.RLock, pool: Optional[ThreadPoolExecutor] = None
+    ):
+        if pool is None:
+            with ThreadPoolExecutor(max_workers=self._pool_size) as _pool:
+                self._running = [
+                    _pool.submit(
+                        self._follow, o, {}, [], _pool, lock, append=o._can_append
+                    )
+                    for o in self.origins
+                ]
+                while len(self._call_returns) < len(self._node_list):
+                    [r.result() for r in self._running]
+        else:
             self._running = [
                 pool.submit(self._follow, o, {}, [], pool, lock, append=o._can_append)
                 for o in self.origins
             ]
-            # print(self, len(self._call_returns), len(self._node_list), self._node_list)
             while len(self._call_returns) < len(self._node_list):
-                # print(self, len(self._call_returns), len(self._node_list), self._node_list)
                 [r.result() for r in self._running]
-            # [r.result() for r in self._running]
 
     def _follow(self, node, traffic, share, pool, lock, run=True, append=False):
         called = False
@@ -190,7 +204,7 @@ class Graph(Node):
         ):
             called = True
 
-            self._call_returns[node.nodeid] = node(__lock__=lock)
+            self._call_returns[node.nodeid] = node(__lock__=lock, __pool__=pool)
             self._called_nodes.append(node.nodeid)
 
         for next_node in node:

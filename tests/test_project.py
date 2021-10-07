@@ -326,4 +326,11 @@ def test_appended_results_are_picked_up_correctly_in_project_messages(dials_data
         == "MotionCorr/job002/Movies/20170629_00048_frameImage.mrc"
     )
     mc_id = msgs[0]["ispyb"][0]["buffer_store"]
+    assert msgs[1]["ispyb"][0]["buffer_command"]["fft_theoretical_full_path"] == str(
+        dials_data("relion_tutorial_data", pathlib=True)
+        / "CtfFind"
+        / "job003"
+        / "Movies"
+        / "20170629_00048_frameImage_PS.jpeg"
+    )
     assert msgs[1]["ispyb"][0]["buffer_lookup"]["motion_correction_id"] == mc_id
