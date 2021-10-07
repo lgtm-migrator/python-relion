@@ -210,15 +210,14 @@ class Graph(Node):
         for next_node in node:
             with lock:
                 next_node.environment.update_prop(node.environment.propagate)
-            next_traffic = node._link_traffic.get(next_node.nodeid, {})
-            if next_traffic is None:
-                next_traffic = self._call_returns.get(node.nodeid) or {}
-            next_share = []
-            if node._share_traffic.get(next_node.nodeid) is not None:
-                for sh in node._share_traffic[next_node.nodeid]:
-                    next_share.append((node.environment[sh[0]], sh[1]))
-            if (node.nodeid, next_node.nodeid) not in self._traversed and called:
-                with lock:
+                next_traffic = node._link_traffic.get(next_node.nodeid, {})
+                if next_traffic is None:
+                    next_traffic = self._call_returns.get(node.nodeid) or {}
+                next_share = []
+                if node._share_traffic.get(next_node.nodeid) is not None:
+                    for sh in node._share_traffic[next_node.nodeid]:
+                        next_share.append((node.environment[sh[0]], sh[1]))
+                if (node.nodeid, next_node.nodeid) not in self._traversed and called:
                     run_next = (
                         len([p for p in self._traversed if p[1] == next_node.nodeid])
                         == len(next_node._in) - 1
