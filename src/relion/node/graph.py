@@ -1,5 +1,6 @@
 import threading
-import time
+
+# import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -196,7 +197,7 @@ class Graph(Node):
                     #    if n.name in ("2DClassificationTables", "3DClassificationTables"):
                     #        print([p.nodeid for p in n._node_list])
                     # print()
-                    time.sleep(0.01)
+                    # time.sleep(0.01)
         else:
             self._running = [
                 pool.submit(self._follow, o, {}, [], pool, lock, append=o._can_append)
@@ -205,7 +206,7 @@ class Graph(Node):
             while len(self._call_returns) < len(self._node_list):
                 [r.result() for r in self._running]
                 # print(len(self._call_returns), len(self._node_list), len(set(self._call_returns.keys())))
-                time.sleep(0.01)
+                # time.sleep(0.01)
         # print("finished", self)
 
     def _follow(self, node, traffic, share, pool, lock, run=True, append=False):

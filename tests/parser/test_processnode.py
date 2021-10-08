@@ -47,17 +47,17 @@ def test_process_node_length_behaviour(node_with_links):
 def test_process_node_removal_of_a_linked_node(node_with_links):
     next_node_01 = ProcessNode("Project/MotionCorr/job002")
     next_node_02 = ProcessNode("Project/CtfFind/job003")
-    node_with_links.unlink_from(next_node_02)
+    node_with_links.unlink_from(next_node_02, use_name=True)
     assert next_node_01 in node_with_links
     assert next_node_02 not in node_with_links
     assert len(node_with_links) == 1
 
 
 def test_process_node_child_checking_behaviour(node_with_links):
-    next_node_01 = ProcessNode("Project/MotionCorr/job002")
+    next_node_01 = node_with_links._out[0]  # ProcessNode("Project/MotionCorr/job002")
     assert node_with_links._is_child(next_node_01)
 
 
 def test_process_node_less_than_behaviour(node_with_links):
-    next_node_01 = ProcessNode("Project/MotionCorr/job002")
+    next_node_01 = node_with_links._out[0]  # ProcessNode("Project/MotionCorr/job002")
     assert node_with_links < next_node_01

@@ -152,7 +152,7 @@ def test_process_graph_merge_with_new_origin(graph, new_origin_graph):
     merged = graph.merge(new_origin_graph)
     assert merged
     assert len(graph) == 4
-    assert list(graph[0])[1] == list(graph[3])[0]
+    assert list(graph[0])[1].name == list(graph[3])[0].name
 
 
 def test_process_graph_merge_with_common_origin(graph, overlapping_graph):
