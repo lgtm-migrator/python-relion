@@ -164,11 +164,15 @@ def test_process_graph_merge_with_new_origin(graph, new_origin_graph):
 
 
 def test_process_graph_merge_with_common_origin(graph, overlapping_graph):
+    print(overlapping_graph[0]._out)
+    print(overlapping_graph[0])
+    print(graph[0]._out)
+    print(graph[0])
     merged = graph.merge(overlapping_graph)
     assert merged
     assert len(graph) == 4
     assert len(graph[0]) == 3
-    assert Node("D") in graph[0]
+    assert overlapping_graph[1] in graph[0]
 
 
 def test_process_graph_merge_does_not_merge_if_merging_graph_is_not_connected_to_original_graph(

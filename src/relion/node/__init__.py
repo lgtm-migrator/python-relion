@@ -33,13 +33,10 @@ class Node:
         if isinstance(other, Node):
             if self.name == other.name and len(self._out) == len(other._out):
                 for n in self._out:
-                    # print(n)
                     if n.name not in [p.name for p in other._out]:
-                        print(f"{n} not in {other._out}")
                         return False
                 for n in self._in:
                     if n.name not in [p.name for p in other._in]:
-                        print(f"{n} not in {other._in}")
                         return False
                 return True
         return False

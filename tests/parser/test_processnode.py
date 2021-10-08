@@ -35,7 +35,9 @@ def test_process_node_equality_with_string_or_path(node_with_links):
 
 def test_process_node_iterator_behaviour(node_with_links):
     next_node_01 = ProcessNode("Project/MotionCorr/job002")
+    next_node_01._in = [ProcessNode("Project/Import/job001")]
     next_node_02 = ProcessNode("Project/CtfFind/job003")
+    next_node_02._in = [ProcessNode("Project/Import/job001")]
     assert next_node_01 in node_with_links
     assert next_node_02 in node_with_links
 
@@ -46,7 +48,9 @@ def test_process_node_length_behaviour(node_with_links):
 
 def test_process_node_removal_of_a_linked_node(node_with_links):
     next_node_01 = ProcessNode("Project/MotionCorr/job002")
+    next_node_01._in = [ProcessNode("Project/Import/job001")]
     next_node_02 = ProcessNode("Project/CtfFind/job003")
+    next_node_02._in = [ProcessNode("Project/Import/job001")]
     node_with_links.unlink_from(next_node_02, use_name=True)
     assert next_node_01 in node_with_links
     assert next_node_02 not in node_with_links
