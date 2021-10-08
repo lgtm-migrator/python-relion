@@ -1,6 +1,4 @@
 import threading
-
-# import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -13,7 +11,7 @@ except ImportError:
 
 
 class Graph(Node):
-    def __init__(self, name, node_list, auto_connect=False, pool_size=5):
+    def __init__(self, name, node_list, auto_connect=False, pool_size=2):
         super().__init__(name)
         self._node_list = node_list
         try:
@@ -21,7 +19,6 @@ class Graph(Node):
         except IndexError:
             self.origins = []
         self._call_returns = {}
-        self._running = []
         self._called_nodes = []
         self._called_nodes_names = []
         self._traversed = []
@@ -122,8 +119,6 @@ class Graph(Node):
         if isinstance(new_node, Node):
             if new_node not in self._node_list:
                 self._node_list.append(new_node)
-            # else:
-            # print("rejecting", new_node, new_node.nodeid, new_node in self._node_list, any(new_node == e for e in self._node_list), [p.nodeid for p in self._node_list if p.name == new_node.name])
             if auto_connect:
                 for i_node in new_node._in:
                     if i_node not in self._node_list:
@@ -183,31 +178,32 @@ class Graph(Node):
         if pool is None:
             with ThreadPoolExecutor(max_workers=self._pool_size) as _pool:
                 self._running = [
-                    _pool.submit(
-                        self._follow, o, {}, [], _pool, lock, append=o._can_append
+                    (
+                        _pool.submit(
+                            self._follow, o, {}, [], _pool, lock, append=o._can_append
+                        ),
+                        o,
                     )
                     for o in self.origins
                 ]
+                _start = 0
                 while len(self._call_returns) < len(self._node_list):
-                    [r.result() for r in self._running]
-                    # print(len(self._call_returns), len(self._node_list), len(set(self._call_returns.keys())), self._call_returns.keys(), [(p.name, p.nodeid) for p in self._node_list])
-                    # print()
-                    # print(self._called_nodes_names)
-                    # for n in self._node_list:
-                    #    if n.name in ("2DClassificationTables", "3DClassificationTables"):
-                    #        print([p.nodeid for p in n._node_list])
-                    # print()
-                    # time.sleep(0.01)
+                    for r in self._running[_start:]:
+                        print("waiting for", r[1])
+                        r[0].result()
+                        _start += 1
+                [r[0].result() for r in self._running[_start:]]
+
         else:
             self._running = [
-                pool.submit(self._follow, o, {}, [], pool, lock, append=o._can_append)
+                (
+                    pool.submit(
+                        self._follow, o, {}, [], pool, lock, append=o._can_append
+                    ),
+                    o,
+                )
                 for o in self.origins
             ]
-            while len(self._call_returns) < len(self._node_list):
-                [r.result() for r in self._running]
-                # print(len(self._call_returns), len(self._node_list), len(set(self._call_returns.keys())))
-                # time.sleep(0.01)
-        # print("finished", self)
 
     def _follow(self, node, traffic, share, pool, lock, run=True, append=False):
         called = False
@@ -231,6 +227,7 @@ class Graph(Node):
 
         for next_node in node:
             with lock:
+                print(node, next_node, "in lock")
                 next_node.environment.update_prop(node.environment.propagate)
                 next_traffic = node._link_traffic.get(next_node.nodeid, {})
                 if next_traffic is None:
@@ -239,6 +236,7 @@ class Graph(Node):
                 if node._share_traffic.get(next_node.nodeid) is not None:
                     for sh in node._share_traffic[next_node.nodeid]:
                         next_share.append((node.environment[sh[0]], sh[1]))
+                print(node, next_node, "out lock")
                 if (node.nodeid, next_node.nodeid) not in self._traversed and called:
                     run_next = (
                         len([p for p in self._traversed if p[1] == next_node.nodeid])
@@ -246,15 +244,18 @@ class Graph(Node):
                     )
                     self._traversed.append((node.nodeid, next_node.nodeid))
                     self._running.append(
-                        pool.submit(
-                            self._follow,
+                        (
+                            pool.submit(
+                                self._follow,
+                                next_node,
+                                next_traffic,
+                                next_share,
+                                pool,
+                                lock,
+                                run=run_next,
+                                append=node._can_append,
+                            ),
                             next_node,
-                            next_traffic,
-                            next_share,
-                            pool,
-                            lock,
-                            run=run_next,
-                            append=node._can_append,
                         )
                     )
 
