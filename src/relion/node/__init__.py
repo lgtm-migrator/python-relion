@@ -33,13 +33,27 @@ class Node:
         if isinstance(other, Node):
             if self.name == other.name and len(self._out) == len(other._out):
                 for n in self._out:
-                    if n not in other._out:
+                    # print(n)
+                    if n.name not in [p.name for p in other._out]:
+                        print(f"{n} not in {other._out}")
+                        return False
+                for n in self._in:
+                    if n.name not in [p.name for p in other._in]:
+                        print(f"{n} not in {other._in}")
                         return False
                 return True
         return False
 
     def __hash__(self):
-        return hash(("relion.node.Node", self._name, tuple(self._out), self.nodeid))
+        return hash(
+            (
+                "relion.node.Node",
+                self._name,
+                tuple(self._out),
+                tuple(self._in),
+                self.nodeid,
+            )
+        )
 
     def __repr__(self):
         return f"Node({repr(str(self._name))})"
@@ -140,7 +154,7 @@ class Node:
         """
         self.environment.propagate.update({share[1]: self.environment[share[0]]})
 
-    def unlink_from(self, next_node):
+    def unlink_from(self, next_node, use_name=False):
         """
         Remove the link to a node
 
@@ -148,7 +162,11 @@ class Node:
         next_node -- node in this node's _out that is being unlinked
         """
         if next_node in self._out:
-            self._out.remove(next_node)
+            if use_name:
+                self._out = [p for p in self._out if p.name != next_node.name]
+            else:
+                self._out.remove(next_node)
+            # self._out.remove(next_node)
 
     def _is_child_checker(self, possible_child, checks):
         if self == possible_child:

@@ -1,4 +1,5 @@
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -21,6 +22,7 @@ class Graph(Node):
         self._call_returns = {}
         self._running = []
         self._called_nodes = []
+        self._called_nodes_names = []
         self._traversed = []
         self._pool_size = pool_size
         self._running = []
@@ -91,11 +93,16 @@ class Graph(Node):
 
     def extend(self, other):
         if not isinstance(other, Graph):
-            raise ValueError("Can only extend a ProtoGraph with another Graph")
+            raise ValueError("Can only extend a Graph with another Graph")
         self._node_list.extend(other._node_list)
 
     def index(self, node):
-        return self._node_list.index(node)
+        try:
+            return self._node_list.index(node)
+        except ValueError:
+            for i, n in enumerate(self._node_list):
+                if node.name == n.name:
+                    return i
 
     def link_from_to(self, from_node, to_node):
         self[self.index(from_node)].link_to(to_node)
@@ -103,7 +110,7 @@ class Graph(Node):
     def node_explore(self, node, explored):
         if not isinstance(node, Node):
             raise ValueError(
-                "Graph.node_explore must be called with a ProtoNode as the starting point; a string or similar is insufficient"
+                "Graph.node_explore must be called with a Node as the starting point; a string or similar is insufficient"
             )
         if node not in explored:
             explored.append(node)
@@ -114,6 +121,8 @@ class Graph(Node):
         if isinstance(new_node, Node):
             if new_node not in self._node_list:
                 self._node_list.append(new_node)
+            # else:
+            # print("rejecting", new_node, new_node.nodeid, new_node in self._node_list, any(new_node == e for e in self._node_list), [p.nodeid for p in self._node_list if p.name == new_node.name])
             if auto_connect:
                 for i_node in new_node._in:
                     if i_node not in self._node_list:
@@ -180,6 +189,14 @@ class Graph(Node):
                 ]
                 while len(self._call_returns) < len(self._node_list):
                     [r.result() for r in self._running]
+                    # print(len(self._call_returns), len(self._node_list), len(set(self._call_returns.keys())), self._call_returns.keys(), [(p.name, p.nodeid) for p in self._node_list])
+                    # print()
+                    # print(self._called_nodes_names)
+                    # for n in self._node_list:
+                    #    if n.name in ("2DClassificationTables", "3DClassificationTables"):
+                    #        print([p.nodeid for p in n._node_list])
+                    # print()
+                    time.sleep(0.01)
         else:
             self._running = [
                 pool.submit(self._follow, o, {}, [], pool, lock, append=o._can_append)
@@ -187,6 +204,9 @@ class Graph(Node):
             ]
             while len(self._call_returns) < len(self._node_list):
                 [r.result() for r in self._running]
+                # print(len(self._call_returns), len(self._node_list), len(set(self._call_returns.keys())))
+                time.sleep(0.01)
+        # print("finished", self)
 
     def _follow(self, node, traffic, share, pool, lock, run=True, append=False):
         called = False
@@ -206,6 +226,7 @@ class Graph(Node):
 
             self._call_returns[node.nodeid] = node(__lock__=lock, __pool__=pool)
             self._called_nodes.append(node.nodeid)
+            self._called_nodes_names.append(node.name)
 
         for next_node in node:
             with lock:

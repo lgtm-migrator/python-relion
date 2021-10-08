@@ -20,7 +20,10 @@ class ProcessNode(Node):
         if isinstance(other, ProcessNode):
             if self._path == other._path and len(self._out) == len(other._out):
                 for n in self._out:
-                    if n not in other._out:
+                    if n.name not in [p.name for p in other._out]:
+                        return False
+                for n in self._in:
+                    if n.name not in [p.name for p in other._in]:
                         return False
                 return True
         else:
@@ -30,8 +33,8 @@ class ProcessNode(Node):
                 return False
         return False
 
-    def __hash__(self):
-        return hash(("relion._parser.ProcessNode", self._path))
+    # def __hash__(self):
+    #    return hash(("relion._parser.ProcessNode", self._path, tuple(self._out), self.nodeid))
 
     def func(self, *args, **kwargs):
         if self.environment.get("result") is None:

@@ -7,53 +7,53 @@ from relion.node.graph import Graph
 
 
 @pytest.fixture
-def node():
+def _node():
     return Node("A")
 
 
 @pytest.fixture
-def next_node_01():
+def _next_node_01():
     return Node("B")
 
 
 @pytest.fixture
-def next_node_02():
+def _next_node_02():
     return Node("C")
 
 
 @pytest.fixture
-def node_with_links(node, next_node_01, next_node_02):
-    node.link_to(next_node_01)
-    node.link_to(next_node_02)
-    return node
+def _node_with_links(_node, _next_node_01, _next_node_02):
+    _node.link_to(_next_node_01)
+    _node.link_to(_next_node_02)
+    return _node
 
 
 @pytest.fixture
-def graph(node_with_links, next_node_01, next_node_02):
-    node_links = [node_with_links, next_node_01, next_node_02]
+def graph(_node_with_links, _next_node_01, _next_node_02):
+    node_links = [_node_with_links, _next_node_01, _next_node_02]
     return Graph("G", node_links)
 
 
 @pytest.fixture
-def overlapping_graph(node):
+def overlapping_graph(_node):
     next_node = Node("D")
-    node.link_to(next_node)
-    node_links = [node, next_node]
+    _node.link_to(next_node)
+    node_links = [_node, next_node]
     return Graph("OvG", node_links)
 
 
 @pytest.fixture
-def new_origin_graph(next_node_02):
+def new_origin_graph(_next_node_02):
     node = Node("D")
-    node.link_to(next_node_02)
-    node_links = [node, next_node_02]
+    node.link_to(_next_node_02)
+    node_links = [node, _next_node_02]
     return Graph("NOG", node_links)
 
 
 @pytest.fixture
-def no_link_graph(next_node_01, next_node_02):
+def no_link_graph(_next_node_01, _next_node_02):
     node = Node("A")
-    node_links = [node, next_node_01, next_node_02]
+    node_links = [node, _next_node_01, _next_node_02]
     return Graph("G", node_links)
 
 
@@ -68,8 +68,8 @@ def test_process_graph_length(graph):
     assert len(graph) == 3
 
 
-def test_process_graph_access_to_elements_via_index(graph, next_node_01):
-    assert graph[1] == next_node_01
+def test_process_graph_access_to_elements_via_index(graph, _next_node_01):
+    assert graph[1] == _next_node_01
 
 
 def test_process_graph_extend_behaves_like_a_list_extend(graph):
@@ -81,72 +81,79 @@ def test_process_graph_extend_behaves_like_a_list_extend(graph):
     assert graph._node_list == old_node_list
 
 
-def test_process_graph_can_get_the_index_of_a_provided_element(graph, next_node_01):
-    assert graph.index(next_node_01) == 1
+def test_process_graph_can_get_the_index_of_a_provided_element(graph, _next_node_01):
+    assert graph.index(_next_node_01) == 1
     assert graph.index(Node("B")) == 1
 
 
 def test_process_graph_node_explore_collects_all_nodes_from_provided_node_onwards(
-    graph, node_with_links, next_node_01, next_node_02
+    graph, _node_with_links, _next_node_01, _next_node_02
 ):
     explored = []
-    graph.node_explore(next_node_01, explored)
-    assert explored == [next_node_01]
+    graph.node_explore(_next_node_01, explored)
+    assert explored == [_next_node_01]
     explored = []
-    graph.node_explore(node_with_links, explored)
-    assert explored == [node_with_links, next_node_01, next_node_02]
+    graph.node_explore(_node_with_links, explored)
+    assert explored == [_node_with_links, _next_node_01, _next_node_02]
     explored = []
     with pytest.raises(ValueError):
         graph.node_explore("A", explored)
 
 
-def test_process_graph_add_node(graph, node_with_links, next_node_01, next_node_02):
+def test_process_graph_add_node(graph, _node_with_links, _next_node_01, _next_node_02):
     new_node = Node("D")
     graph.add_node(new_node)
-    assert graph._node_list == [node_with_links, next_node_01, next_node_02, new_node]
+    assert graph._node_list == [
+        _node_with_links,
+        _next_node_01,
+        _next_node_02,
+        new_node,
+    ]
 
 
 def test_process_graph_remove_node_without_any_links(
-    graph, node_with_links, next_node_01, next_node_02
+    graph, _node_with_links, _next_node_01, _next_node_02
 ):
-    graph.remove_node(next_node_01)
-    assert graph.nodes == [node_with_links, next_node_02]
-    graph.remove_node(next_node_02)
-    assert graph.nodes == [node_with_links]
+    graph.remove_node(_next_node_01)
+    assert graph.nodes == [_node_with_links, _next_node_02]
+    graph.remove_node(_next_node_02)
+    assert graph.nodes == [_node_with_links]
 
 
 def test_process_graph_link_from_to_does_the_linking_correctly(
-    no_link_graph, next_node_01
+    no_link_graph, _next_node_01
 ):
     node = Node("A")
-    no_link_graph.link_from_to(node, next_node_01)
-    assert list(no_link_graph[0])[0] == next_node_01
+    no_link_graph.link_from_to(node, _next_node_01)
+    assert list(no_link_graph[0])[0] == _next_node_01
 
 
 def test_process_graph_remove_node_and_check_links_still_work(
-    next_node_01, next_node_02
+    _next_node_01, _next_node_02
 ):
     # Can't use graph fixture here as linking a child node to a new node wouldn't change the parent node in the way required for a fixture
     node = Node("A")
-    node.link_to(next_node_01)
-    node.link_to(next_node_02)
-    new_graph = Graph("G01", [node, next_node_01, next_node_02])
+    node.link_to(_next_node_01)
+    node.link_to(_next_node_02)
+    new_graph = Graph("G01", [node, _next_node_01, _next_node_02])
     last_node = Node("D")
-    new_graph.link_from_to(next_node_01, last_node)
+    new_graph.link_from_to(_next_node_01, last_node)
     new_graph.add_node(last_node)
     assert list(list(new_graph[0])[0])[0] == last_node
     new_graph.remove_node(new_graph[1])
-    assert new_graph.nodes == [node, next_node_02, last_node]
+    assert new_graph.nodes == [node, _next_node_02, last_node]
     assert list(new_graph[0])[1] == last_node
 
 
-def test_process_graph_find_origins_finds_nodes_without_parents(graph, node_with_links):
+def test_process_graph_find_origins_finds_nodes_without_parents(
+    graph, _node_with_links
+):
     orgs = graph.find_origins()
-    assert orgs == [node_with_links]
+    assert orgs == [_node_with_links]
     new_node = Node("D")
     graph.add_node(new_node)
     orgs = graph.find_origins()
-    assert orgs == [node_with_links, new_node]
+    assert orgs == [_node_with_links, new_node]
 
 
 def test_process_graph_merge_with_new_origin(graph, new_origin_graph):
@@ -172,10 +179,10 @@ def test_process_graph_merge_does_not_merge_if_merging_graph_is_not_connected_to
     assert not merged
 
 
-def test_calling_graph_gives_results_for_all_nodes(node, graph):
+def test_calling_graph_gives_results_for_all_nodes(_node, graph):
     graph()
     assert len(graph._call_returns.values()) == len(graph.nodes)
-    assert graph._call_returns[node.nodeid] is None
+    assert graph._call_returns[_node.nodeid] is None
 
 
 @mock.patch("relion.node.graph.Digraph")

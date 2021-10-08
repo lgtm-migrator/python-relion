@@ -243,6 +243,7 @@ class Project(RelionPipeline):
                 else:
                     self._update_pipeline(jobnode, jobnode.name)
             else:
+                # print("adding job node", jobnode, jobnode.name, jobnode._out, jobnode.nodeid)
                 self._data_pipeline.add_node(jobnode)
                 if jobnode.name == "Import":
                     self._data_pipeline.origins = [jobnode]
@@ -262,6 +263,7 @@ class Project(RelionPipeline):
             result_as_traffic=True,
             share=[("end_time_stamp", "end_time")],
         )
+        # print("adding job node", jobnode, jobnode.name, jobnode._out, jobnode.nodeid)
         self._data_pipeline.add_node(jobnode)
         if in_db_model:
             self._data_pipeline.add_node(self._db_model[label])
