@@ -426,7 +426,8 @@ def _(
 ):
     pid = primary_table.add_row(row)
     return pid
-    
+
+
 @insert.register(ClusterJobTable)
 def _(
     primary_table: ClusterJobTable,

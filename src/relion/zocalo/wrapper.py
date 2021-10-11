@@ -766,7 +766,7 @@ def _(
     table: RelativeIceThicknessTable,
     primary_key: int,
     resend: bool = False,
-    unsent_appended: Union[dict, None] = None,
+    unsent_appended: Optional[dict] = None,
 ):
     row = table.get_row_by_primary_key(primary_key)
     buffered = ["motion_correction_id", "relative_ice_thickness_id"]
