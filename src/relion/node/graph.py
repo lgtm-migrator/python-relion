@@ -11,13 +11,23 @@ except ImportError:
 
 
 class Graph(Node):
-    def __init__(self, name, node_list, auto_connect=False, pool_size=2):
+    def __init__(
+        self, name, node_list, auto_connect=False, pool_size=5, node_type=Node
+    ):
         super().__init__(name)
-        self._node_list = node_list
+        self._start_node = node_type(f"{name}_start")
+        self._end_node = node_type(f"{name}_end")
+        self._node_list = [self._start_node] + node_list + [self._end_node]
         try:
             self.origins = self.find_origins()
         except IndexError:
             self.origins = []
+        [self._start_node.link_to(o) for o in self.origins]
+        [
+            n.link_to(self._end_node)
+            for n in self._node_list
+            if not n._out and n != self._end_node
+        ]
         self._call_returns = {}
         self._called_nodes = []
         self._called_nodes_names = []
@@ -93,6 +103,8 @@ class Graph(Node):
         if not isinstance(other, Graph):
             raise ValueError("Can only extend a Graph with another Graph")
         self._node_list.extend(other._node_list)
+        self.remove_node(other._start_node)
+        self.remove_node(other._end_node)
 
     def index(self, node):
         try:
@@ -187,12 +199,13 @@ class Graph(Node):
                     for o in self.origins
                 ]
                 _start = 0
-                while len(self._call_returns) < len(self._node_list):
+                unfinished = True
+                while unfinished:
                     for r in self._running[_start:]:
-                        print("waiting for", r[1])
                         r[0].result()
+                        if r[1] == self._end_node:
+                            unfinished = False
                         _start += 1
-                [r[0].result() for r in self._running[_start:]]
 
         else:
             self._running = [

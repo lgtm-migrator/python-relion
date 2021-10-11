@@ -94,6 +94,7 @@ class RelionPipeline:
         )
 
     def load_nodes_from_star(self, star_path):
+        print("loading")
         self._nodes.wipe()
         star_doc_from_path = self._star_doc(star_path)
         file_nodes = self._load_file_nodes_from_star(star_doc_from_path)
@@ -152,7 +153,10 @@ class RelionPipeline:
                 self._nodes[self._nodes.index(f._path)].propagate(
                     ("init_model_class_num", "init_model_class_num")
                 )
+        print(self._nodes)
+        # print(self._nodes.nodes)
         self._nodes._split_connected(self._connected, self.origin, self.origins)
+        print("split")
         self._set_job_nodes(star_doc_from_path)
 
     def check_job_node_statuses(self, basepath):

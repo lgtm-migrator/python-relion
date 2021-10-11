@@ -6,8 +6,9 @@ class DBGraph(Graph):
         super().__init__(name, node_list, auto_connect=auto_connect)
         self.environment["source"] = self.name
         for n in self._node_list:
-            for tab in n.tables:
-                tab._last_update[self.name] = 0
+            if n not in (self._start_node, self._end_node):
+                for tab in n.tables:
+                    tab._last_update[self.name] = 0
 
     def __call__(self, *args, **kwargs):
         res = super().__call__(*args, **kwargs)

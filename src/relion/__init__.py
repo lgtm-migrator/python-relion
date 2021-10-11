@@ -197,6 +197,7 @@ class Project(RelionPipeline):
         return (self.basepath / self.origin / "RELION_JOB_EXIT_SUCCESS").is_file()
 
     def load(self, clear_cache=True):
+        print("loading")
         if clear_cache:
             self._clear_caches()
         self._data_pipeline = Graph("DataPipeline", [])
@@ -210,10 +211,13 @@ class Project(RelionPipeline):
             ]
         self._jobs_collapsed = False
         self.load_nodes_from_star(self.basepath / "default_pipeline.star")
+        print("loaded")
         self.check_job_node_statuses(self.basepath)
         self.collect_job_times(
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
+        print("should be nodes")
+        print(self._nodes.nodes)
         for jobnode in self:
             if self._results_dict.get(
                 jobnode.name
@@ -264,6 +268,7 @@ class Project(RelionPipeline):
             share=[("end_time_stamp", "end_time")],
         )
         # print("adding job node", jobnode, jobnode.name, jobnode._out, jobnode.nodeid)
+        print("will be adding node", jobnode)
         self._data_pipeline.add_node(jobnode)
         if in_db_model:
             self._data_pipeline.add_node(self._db_model[label])

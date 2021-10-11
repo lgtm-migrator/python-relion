@@ -9,6 +9,14 @@ from relion.node.graph import Graph
 class ProcessGraph(Graph):
     # def __init__(self, node_list):
     #    self._node_list = node_list
+    def __init__(self, name, node_list, auto_connect=False, pool_size=5):
+        super().__init__(
+            name,
+            node_list,
+            auto_connect=auto_connect,
+            pool_size=pool_size,
+            node_type=ProcessNode,
+        )
 
     def __eq__(self, other):
         if isinstance(other, ProcessGraph):
@@ -43,6 +51,8 @@ class ProcessGraph(Graph):
         if not isinstance(other, ProcessGraph):
             raise ValueError("Can only extend a ProcessGraph with another ProcessGraph")
         self._node_list.extend(other._node_list)
+        self.remove_node(other._start_node)
+        self.remove_node(other._end_node)
 
     def index(self, node):
         return self._node_list.index(node)
@@ -51,6 +61,7 @@ class ProcessGraph(Graph):
         self[self.index(from_node)].link_to(to_node)
 
     def node_explore(self, node, explored):
+        # print("exploring", node)
         if not isinstance(node, ProcessNode):
             raise ValueError(
                 f"ProcessGraph.node_explore must be called with a ProcessNode (not {type(node)}: {node}) as the starting point; a string or similar is insufficient"
@@ -82,15 +93,18 @@ class ProcessGraph(Graph):
             return False
 
     def split_connected(self):
-        if len(self._node_list) == 0:
+        if len(self._node_list) == 2:  # 0:
             return []
         connected_graphs = []
+        print("exploring")
         for oi, origin in enumerate(self.find_origins()):
             curr_graph = []
+            print("origin", origin)
             self.node_explore(origin, curr_graph)
             connected_graphs.append(
                 ProcessGraph(f"{self.name}:Connected:{oi}", curr_graph)
             )
+        print("prepare for removal")
         for_removal = []
         for i, g in enumerate(connected_graphs):
             for ng in connected_graphs[i + 1 :]:
@@ -110,6 +124,7 @@ class ProcessGraph(Graph):
                 origins_dict["main"] = self[self.index(origin)]
             else:
                 connected_dict[f"ancillary:{ancillary_count}"] = cg
+                print("connected graph", cg, cg.nodes)
                 origins_dict[f"ancillary:{ancillary_count}"] = cg.find_origins()[0]
                 ancillary_count += 1
 
@@ -128,4 +143,6 @@ class ProcessGraph(Graph):
             )
 
     def wipe(self):
-        self._node_list = []
+        self._start_node._out = []
+        self._end_node._in = []
+        self._node_list = [self._start_node, self._end_node]
