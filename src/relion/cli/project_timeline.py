@@ -15,18 +15,41 @@ def run() -> None:
     relion_dir = pathlib.Path(args.proj_path)
     proj = Project(relion_dir, cluster=True)
     # mc_jobs = proj._job_nodes.nodes[1].environment["cluster_job_ids"]
-    job_times = []
+    preproc = (
+        "Import",
+        "MotionCorr",
+        "CtfFind",
+        "crYOLO_AutoPick",
+        "Icebreaker_G",
+        "Icebreaker_F",
+        "AutoPick",
+        "Extract",
+        "Select",
+    )
+    preproc_job_times = []
+    other_job_times = []
     for job in proj._job_nodes.nodes:
-        if job.environment["job_start_times"] and (
-            job.environment["alias"] is None
-            or "Icebreaker_group_batch" not in job.environment["alias"]
-        ):
-            if "External" in job.name:
-                tag = job.environment["alias"].split("/")[1]
-            else:
-                tag = job.name
-            job_times.extend([(t, tag) for t in job.environment["job_start_times"]])
-    job_times = sorted(job_times, key=lambda x: x[0])
+        if "External" in job.name:
+            tag = job.environment["alias"].split("/")[1]
+        else:
+            tag = job.name
+        if job in proj.preprocess:
+            if job.environment["job_start_times"] and (
+                job.environment["alias"] is None
+                or "Icebreaker_group_batch" not in job.environment["alias"]
+            ):
+                preproc_job_times.extend(
+                    [(t, tag) for t in job.environment["job_start_times"]]
+                )
+        else:
+            other_job_times.append(
+                (
+                    job.environment["start_time_stamp"],
+                    job.environment["end_time_stamp"],
+                    tag,
+                )
+            )
+    preproc_job_times = sorted(preproc_job_times, key=lambda x: x[0])
     preproc = (
         "Import",
         "MotionCorr",
@@ -49,7 +72,6 @@ def run() -> None:
         "Icebreaker_G": "#bcbd22",
         "Icebreaker_F": "#17becf",
     }
-    preproc_job_times = [p for p in job_times if p[1].split("/")[0] in preproc]
     starts = [p[0] for p in preproc_job_times[:-1]]
     ends = [p[0] for p in preproc_job_times[1:]]
     hover_names = [p[1].split("/")[0] for p in preproc_job_times[:-1]]
@@ -59,7 +81,7 @@ def run() -> None:
         x_end=ends,
         hover_name=hover_names,
         color=colours,
-        label=hover_names,
+        labels=hover_names,
     )
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
@@ -67,10 +89,10 @@ def run() -> None:
     time_spent = [
         datetime.timestamp(te) - datetime.timestamp(ts) for ts, te in zip(starts, ends)
     ]
-    cumulative_time_spent = {key: 0 for key in preproc}
+    cumulative_time_spent = {key: [0] for key in preproc}
     for ts, h in zip(time_spent, hover_names):
-        cumulative_time_spent[h] += ts
-    cumulative_time = px.histogram(cumulative_time_spent)
+        cumulative_time_spent[h][0] += ts
+    cumulative_time = px.bar(cumulative_time_spent, x=preproc)
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
