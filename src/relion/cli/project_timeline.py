@@ -49,14 +49,14 @@ def run() -> None:
     ]
     preproc_job_times["total_time"] = [
         datetime.timestamp(te) - datetime.timestamp(ts)
-        for te, ts in zip(
+        for ts, te in zip(
             preproc_job_times["start_time"], preproc_job_times["end_time"]
         )
     ]
 
     other_job_times["total_time"] = [
         datetime.timestamp(te) - datetime.timestamp(ts)
-        for te, ts in zip(other_job_times["start_time"], other_job_times["end_time"])
+        for ts, te in zip(other_job_times["start_time"], other_job_times["end_time"])
     ]
 
     df = pd.DataFrame(preproc_job_times)
@@ -82,9 +82,9 @@ def run() -> None:
         pathlib.Path(args.out_dir) / "relion_project_classification_timeline.html"
     )
 
-    # df_all = pd.merge(df, df_other)
+    df_all = pd.concat(df, df_other)
 
-    cumulative_time = px.bar(df, x="job", y="total_time")
+    cumulative_time = px.bar(df_all, x="job", y="total_time")
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
