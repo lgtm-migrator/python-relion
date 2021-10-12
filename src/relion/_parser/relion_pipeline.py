@@ -340,6 +340,9 @@ class RelionPipeline:
             job.environment["cluster_command"] = self._get_command(
                 basepath / job._path / "note.txt"
             )
+            job.environment["job_start_times"] = self._get_job_times(
+                basepath / "pipeline_PREPROCESS.log", job._path
+            )
 
     def _latest_cluster_id(self, log_path):
         try:
@@ -393,6 +396,25 @@ class RelionPipeline:
             return None
         except FileNotFoundError:
             return None
+
+    def _get_job_times(self, log_path, job_path):
+        times = []
+        with open(log_path, "r") as slf:
+            lines = slf.readlines()
+            for lindex, line in enumerate(lines):
+                if "Executing" in line and job_path in line:
+                    split_line = lines[lindex - 1].split()
+                    time_split = split_line[4].split(":")
+                    dtime = datetime.datetime(
+                        year=int(split_line[5]),
+                        month=list(calendar.month_abbr).index(split_line[2]),
+                        day=int(split_line[3]),
+                        hour=int(time_split[0]),
+                        minute=int(time_split[1]),
+                        second=int(time_split[2]),
+                    )
+                    times.append(dtime)
+        return times
 
     def _get_pipeline_jobs(self, logfile):
         if logfile is None:
