@@ -42,6 +42,7 @@ def run() -> None:
             )
     preproc_job_times = sorted(preproc_job_times, key=lambda x: x[0])
     class2d_job_times = [p for p in other_job_times if "Class2D" in p[2]]
+    class3d_job_times = [p for p in other_job_times if "Class3D" in p[2]]
     preproc_colours = {
         "Import": "#1f77b4",
         "MotionCorr": "#ff7f0e",
@@ -65,24 +66,37 @@ def run() -> None:
         labels=hover_names,
     )
     class2d_trace = px.timeline(
-        x_start=[t[0] for t in class2d_job_times],
-        x_end=[t[1] for t in class2d_job_times],
-        hover_name="Class2D",
+        x_start=[t[0] for t in class2d_job_times] + [t[0] for t in class3d_job_times],
+        x_end=[t[1] for t in class2d_job_times] + [t[1] for t in class3d_job_times],
+        hover_name=["Class2D" for _ in class2d_job_times]
+        + ["Class3D" for _ in class2d_job_times],
+        color=["#ff7f0e" for _ in class2d_job_times]
+        + ["#8c564b" for _ in class2d_job_times],
     )
-    timeline.add_trace(class2d_trace)
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
+    )
+    class2d_trace.write_html(
+        pathlib.Path(args.out_dir) / "relion_project_classification_timeline.html"
     )
     time_spent = [
         datetime.timestamp(te) - datetime.timestamp(ts) for ts, te in zip(starts, ends)
     ]
-    cumulative_time_spent = {"time": [], "job": []}
+    time_spent_class2d = [
+        datetime.timestamp(t[1]) - datetime.timestamp(t[0]) for t in class2d_job_times
+    ]
+    cumulative_time_spent = {"time": [], "job": [], "colour": []}
 
     for ts, h in zip(time_spent, hover_names):
         cumulative_time_spent["time"].append(ts)
         cumulative_time_spent["job"].append(h)
+        cumulative_time_spent["colour"].append("#ff9000")
+    for t in time_spent_class2d:
+        cumulative_time_spent["time"].append(t)
+        cumulative_time_spent["job"].append("Class2D")
+        cumulative_time_spent["colour"].append("#2ec4b6")
     df = pd.DataFrame(cumulative_time_spent)
-    cumulative_time = px.bar(df, x="job", y="time")
+    cumulative_time = px.bar(df, x="job", y="time", color="colour")
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
