@@ -22,7 +22,7 @@ def run() -> None:
             or "Icebreaker_group_batch" not in job.environment["alias"]
         ):
             if "External" in job.name:
-                tag = job.environment["alias"].split("/")[0]
+                tag = job.environment["alias"].split("/")[1]
             else:
                 tag = job.name
             job_times.extend([(t, tag) for t in job.environment["job_start_times"]])
