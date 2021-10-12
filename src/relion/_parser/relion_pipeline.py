@@ -340,9 +340,30 @@ class RelionPipeline:
             job.environment["cluster_command"] = self._get_command(
                 basepath / job._path / "note.txt"
             )
-            job.environment["job_start_times"] = self._get_job_times(
-                basepath / "pipeline_PREPROCESS.log", job._path
-            )
+            if job._path.parent in [
+                "Import",
+                "MotionCorr",
+                "CtfFind",
+                "External",
+                "AutoPick",
+                "Select",
+                "Extract",
+            ]:
+                job.environment["job_start_times"] = self._get_job_times(
+                    basepath / "pipeline_PREPROCESS.log", job._path
+                )
+            elif job._path.parent == "Class2D":
+                job.environment["job_start_times"] = self._get_job_times(
+                    basepath / "pipeline_CLASS2D.log", job._path
+                )
+            elif job._path.parent == "InitialModel":
+                job.environment["job_start_times"] = self._get_job_times(
+                    basepath / "pipeline_INIMODEL.log", job._path
+                )
+            elif job._path.parent == "Class3D":
+                job.environment["job_start_times"] = self._get_job_times(
+                    basepath / "pipeline_CLASS3D.log", job._path
+                )
 
     def _latest_cluster_id(self, log_path):
         try:
