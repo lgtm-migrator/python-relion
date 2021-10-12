@@ -35,6 +35,7 @@ def run() -> None:
                     [tag.split("/")[0] for _ in job.environment["job_start_times"]]
                 )
         else:
+            tag = tag.split("_batch")[0]
             other_job_times["start_time"].append(job.environment["start_time_stamp"])
             other_job_times["end_time"].append(job.environment["end_time_stamp"])
             other_job_times["job"].append(tag.split("/")[0])
@@ -81,9 +82,9 @@ def run() -> None:
         pathlib.Path(args.out_dir) / "relion_project_classification_timeline.html"
     )
 
-    df_all = pd.merge(df, df_other)
+    # df_all = pd.merge(df, df_other)
 
-    cumulative_time = px.bar(df_all, x="job", y="total_time")
+    cumulative_time = px.bar(df, x="job", y="total_time")
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
