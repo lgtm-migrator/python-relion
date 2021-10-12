@@ -9,6 +9,7 @@ from relion import Project
 def run() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("proj_path")
+    parser.add_argument("-o", "--out_dir", dest="out_dir", default="./")
     args = parser.parse_args()
     relion_dir = pathlib.Path(args.proj_path)
     proj = Project(relion_dir, cluster=True)
@@ -55,4 +56,6 @@ def run() -> None:
     timeline = px.timeline(
         x_start=starts, x_end=ends, hover_name=hover_names, color=colours
     )
-    timeline.write_html("./relion_project_preprocessing_timeline.html")
+    timeline.write_html(
+        pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
+    )
