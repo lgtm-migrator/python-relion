@@ -402,7 +402,7 @@ class RelionPipeline:
         with open(log_path, "r") as slf:
             lines = slf.readlines()
             for lindex, line in enumerate(lines):
-                if "Executing" in line and job_path in line:
+                if "Executing" in line and str(job_path) in line:
                     split_line = lines[lindex - 1].split()
                     time_split = split_line[4].split(":")
                     dtime = datetime.datetime(
