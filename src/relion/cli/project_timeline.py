@@ -19,15 +19,19 @@ def run() -> None:
             job.environment["alias"] is None
             or "Icebreaker_group_batch" not in job.environment["alias"]
         ):
-            job_times.extend(
-                [(t, job.name) for t in job.environment["job_start_times"]]
-            )
+            if "External" in job.name:
+                tag = job.environment["alias"].split("/")[0]
+            else:
+                tag = job.name
+            job_times.extend([(t, tag) for t in job.environment["job_start_times"]])
     job_times = sorted(job_times, key=lambda x: x[0])
     preproc = (
         "Import",
         "MotionCorr",
         "CtfFind",
-        "External",
+        "crYOLO_AutoPick",
+        "Icebreaker_G",
+        "Icebreaker_F",
         "AutoPick",
         "Extract",
         "Select",
@@ -36,10 +40,12 @@ def run() -> None:
         "Import": "#1f77b4",
         "MotionCorr": "#ff7f0e",
         "CtfFind": "#2ca02c",
-        "External": "#d62728",
         "AutoPick": "#9467bd",
         "Extract": "#8c564b",
         "Select": "#e377c2",
+        "crYOLO_AutoPick": "#d62728",
+        "Icebreaker_G": "#bcbd22",
+        "Icebreaker_F": "#17becf",
     }
     preproc_job_times = [p for p in job_times if p[1].split("/")[0] in preproc]
     starts = [p[0] for p in preproc_job_times[:-1]]
