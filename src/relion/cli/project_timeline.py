@@ -2,6 +2,7 @@ import argparse
 import pathlib
 from datetime import datetime
 
+import pandas as pd
 import plotly.express as px
 
 from relion import Project
@@ -15,17 +16,7 @@ def run() -> None:
     relion_dir = pathlib.Path(args.proj_path)
     proj = Project(relion_dir, cluster=True)
     # mc_jobs = proj._job_nodes.nodes[1].environment["cluster_job_ids"]
-    preproc = (
-        "Import",
-        "MotionCorr",
-        "CtfFind",
-        "crYOLO_AutoPick",
-        "Icebreaker_G",
-        "Icebreaker_F",
-        "AutoPick",
-        "Extract",
-        "Select",
-    )
+
     preproc_job_times = []
     other_job_times = []
     for job in proj._job_nodes.nodes:
@@ -50,17 +41,6 @@ def run() -> None:
                 )
             )
     preproc_job_times = sorted(preproc_job_times, key=lambda x: x[0])
-    preproc = (
-        "Import",
-        "MotionCorr",
-        "CtfFind",
-        "crYOLO_AutoPick",
-        "Icebreaker_G",
-        "Icebreaker_F",
-        "AutoPick",
-        "Extract",
-        "Select",
-    )
     preproc_colours = {
         "Import": "#1f77b4",
         "MotionCorr": "#ff7f0e",
@@ -89,10 +69,13 @@ def run() -> None:
     time_spent = [
         datetime.timestamp(te) - datetime.timestamp(ts) for ts, te in zip(starts, ends)
     ]
-    cumulative_time_spent = {key: [0] for key in preproc}
+    cumulative_time_spent = {"time": [], "job": []}
+
     for ts, h in zip(time_spent, hover_names):
-        cumulative_time_spent[h][0] += ts
-    cumulative_time = px.bar(cumulative_time_spent, x=preproc)
+        cumulative_time_spent["time"].append(ts)
+        cumulative_time_spent["job"].append(h)
+    df = pd.DataFrame(cumulative_time_spent)
+    cumulative_time = px.bar(df, x="job", y="time")
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
