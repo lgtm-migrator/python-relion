@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from relion import Project
@@ -62,9 +63,8 @@ def run() -> None:
 
     df = pd.DataFrame(preproc_job_times)
     df_other = pd.DataFrame(other_job_times)
-    df_both = pd.DataFrame([preproc_job_times, other_job_times])
     timeline = px.timeline(
-        df_both,
+        df,
         x_start="start_time",
         x_end="end_time",
         hover_name="job",
@@ -77,9 +77,29 @@ def run() -> None:
         hover_name="job",
         color="job",
     )
-    fig = make_subplots(shared_xaxes=True)
-    fig.add_trace(timeline)
-    fig.add_trace(class2d_trace)
+    fig = make_subplots(rows=2, cols=1, colshared_xaxes=True)
+    fig.add_trace(
+        go.timeline(
+            df,
+            x_start="start_time",
+            x_end="end_time",
+            hover_name="job",
+            color="job",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.timeline(
+            df_other,
+            x_start="start_time",
+            x_end="end_time",
+            hover_name="job",
+            color="job",
+        ),
+        row=2,
+        col=1,
+    )
     fig.write_html(pathlib.Path(args.out_dir) / "relion_project_timeline.html")
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
