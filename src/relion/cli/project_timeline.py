@@ -39,7 +39,7 @@ def run() -> None:
             other_job_times["end_time"].append(job.environment["end_time_stamp"])
             other_job_times["job"].append(tag.split("/")[0])
     sorted_times = sorted(preproc_job_times["start_time"])
-    end_times = {ts: sorted_times[i + 1] for ts, i in enumerate(sorted_times[:-1])}
+    end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
     preproc_job_times["start_time"] = preproc_job_times["start_time"][:-1]
     preproc_job_times["job"] = preproc_job_times["job"][:-1]
     preproc_job_times["end_time"] = [
