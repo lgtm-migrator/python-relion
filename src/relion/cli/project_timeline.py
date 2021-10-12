@@ -57,7 +57,7 @@ def run() -> None:
                     )
                 else:
                     preproc_job_times["cluster_id"].extend(
-                        [None for _ in job.environment["job_start_times"]]
+                        ["N/A" for _ in job.environment["job_start_times"]]
                     )
                 if job.environment["cluster_job_mic_counts"]:
                     preproc_job_times["num_mics"].extend(
@@ -65,7 +65,7 @@ def run() -> None:
                     )
                 else:
                     preproc_job_times["num_mics"].extend(
-                        [None for _ in job.environment["cluster_job_mic_counts"]]
+                        ["N/A" for _ in job.environment["job_start_times"]]
                     )
         else:
             tag = tag.split("_batch")[0]
@@ -78,8 +78,8 @@ def run() -> None:
                     job.environment["cluster_job_ids"][0]
                 )
             else:
-                other_job_times["cluster_id"].append(None)
-            other_job_times["num_mics"].append(None)
+                other_job_times["cluster_id"].append("N/A")
+            other_job_times["num_mics"].append("N/A")
     sorted_times = sorted(preproc_job_times["start_time"])
     drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
     end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
@@ -87,6 +87,7 @@ def run() -> None:
     preproc_job_times["job"].pop(drop_index)
     preproc_job_times["cluster_id"].pop(drop_index)
     preproc_job_times["schedule"].pop(drop_index)
+    preproc_job_times["num_mics"].pop(drop_index)
     preproc_job_times["end_time"] = [
         end_times[t] for t in preproc_job_times["start_time"]
     ]
@@ -110,7 +111,7 @@ def run() -> None:
         x_start="start_time",
         x_end="end_time",
         hover_name="job",
-        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
         color="job",
     )
     full_timeline = px.timeline(
@@ -119,7 +120,7 @@ def run() -> None:
         x_end="end_time",
         y="job",
         hover_name="job",
-        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
         color="job",
     )
 
@@ -137,7 +138,7 @@ def run() -> None:
         x="job",
         y="total_time",
         color="schedule",
-        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
     )
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
