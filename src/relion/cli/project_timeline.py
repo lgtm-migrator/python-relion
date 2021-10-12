@@ -22,6 +22,7 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "num_mics": [],
     }
     other_job_times = {
         "start_time": [],
@@ -29,6 +30,7 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "num_mics": [],
     }
     for job in proj._job_nodes.nodes:
         if "External" in job.name:
@@ -49,26 +51,42 @@ def run() -> None:
                 preproc_job_times["schedule"].extend(
                     ["preprocess" for _ in job.environment["job_start_times"]]
                 )
-                preproc_job_times["cluster_id"].extend(
-                    job.environment["cluster_job_ids"]
-                )
+                if job.environment["cluster_job_ids"]:
+                    preproc_job_times["cluster_id"].extend(
+                        job.environment["cluster_job_ids"]
+                    )
+                else:
+                    preproc_job_times["cluster_id"].extend(
+                        [None for _ in job.environment["job_start_times"]]
+                    )
+                if job.environment["cluster_job_mic_counts"]:
+                    preproc_job_times["num_mics"].extend(
+                        job.environment["cluster_job_mic_counts"]
+                    )
+                else:
+                    preproc_job_times["num_mics"].extend(
+                        [None for _ in job.environment["cluster_job_mic_counts"]]
+                    )
         else:
             tag = tag.split("_batch")[0]
             other_job_times["start_time"].append(job.environment["start_time_stamp"])
             other_job_times["end_time"].append(job.environment["end_time_stamp"])
             other_job_times["job"].append(tag.split("/")[0])
-            other_job_times["schedule"].append(tag)
+            other_job_times["schedule"].append(tag.split("/")[0])
             if job.environment["cluster_job_ids"]:
                 other_job_times["cluster_id"].append(
                     job.environment["cluster_job_ids"][0]
                 )
             else:
                 other_job_times["cluster_id"].append(None)
+            other_job_times["num_mics"].append(None)
     sorted_times = sorted(preproc_job_times["start_time"])
     drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
     end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
     preproc_job_times["start_time"].pop(drop_index)
     preproc_job_times["job"].pop(drop_index)
+    preproc_job_times["cluster_id"].pop(drop_index)
+    preproc_job_times["schedule"].pop(drop_index)
     preproc_job_times["end_time"] = [
         end_times[t] for t in preproc_job_times["start_time"]
     ]
@@ -92,6 +110,7 @@ def run() -> None:
         x_start="start_time",
         x_end="end_time",
         hover_name="job",
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
         color="job",
     )
     full_timeline = px.timeline(
@@ -100,6 +119,7 @@ def run() -> None:
         x_end="end_time",
         y="job",
         hover_name="job",
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
         color="job",
     )
 
@@ -112,7 +132,13 @@ def run() -> None:
 
     df_all.sort_values("start_time")
 
-    cumulative_time = px.bar(df_all, x="job", y="total_time", color="schedule")
+    cumulative_time = px.bar(
+        df_all,
+        x="job",
+        y="total_time",
+        color="schedule",
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics"],
+    )
     cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
