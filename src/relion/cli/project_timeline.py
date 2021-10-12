@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+from datetime import datetime
 
 import plotly.express as px
 
@@ -54,8 +55,22 @@ def run() -> None:
     hover_names = [p[1].split("/")[0] for p in preproc_job_times[:-1]]
     colours = [preproc_colours[p] for p in hover_names]
     timeline = px.timeline(
-        x_start=starts, x_end=ends, hover_name=hover_names, color=colours
+        x_start=starts,
+        x_end=ends,
+        hover_name=hover_names,
+        color=colours,
+        label=hover_names,
     )
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
+    )
+    time_spent = [
+        datetime.timestamp(te) - datetime.timestamp(ts) for ts, te in zip(starts, ends)
+    ]
+    cumulative_time_spent = {key: 0 for key in preproc}
+    for ts, h in zip(time_spent, hover_names):
+        cumulative_time_spent[h] += ts
+    cumulative_time = px.histogram(cumulative_time_spent)
+    cumulative_time.write_html(
+        pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
