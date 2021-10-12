@@ -4,6 +4,8 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from relion import Project
 
@@ -133,13 +135,25 @@ def run() -> None:
 
     df_all.sort_values("start_time")
 
-    cumulative_time = px.bar(
+    fig = make_subplots(shared_xaxes=True)
+
+    cumulative_time = go.Bar(
         df_all,
         x="job",
         y="total_time",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
     )
-    cumulative_time.write_html(
+    job_count = go.Bar(
+        df_all,
+        x="job",
+        color="schedule",
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+    )
+
+    fig.add_trace(cumulative_time)
+    fig.add_trace(job_count)
+
+    fig.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
