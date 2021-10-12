@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
+from plotly.subplots import make_subplots
 
 from relion import Project
 
@@ -61,8 +62,9 @@ def run() -> None:
 
     df = pd.DataFrame(preproc_job_times)
     df_other = pd.DataFrame(other_job_times)
+    df_both = pd.DataFrame([preproc_job_times, other_job_times])
     timeline = px.timeline(
-        df,
+        df_both,
         x_start="start_time",
         x_end="end_time",
         hover_name="job",
@@ -75,6 +77,10 @@ def run() -> None:
         hover_name="job",
         color="job",
     )
+    fig = make_subplots(shared_xaxes=True)
+    fig.add_trace(timeline)
+    fig.add_trace(class2d_trace)
+    fig.write_html(pathlib.Path(args.out_dir) / "relion_project_timeline.html")
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
     )
@@ -82,7 +88,8 @@ def run() -> None:
         pathlib.Path(args.out_dir) / "relion_project_classification_timeline.html"
     )
 
-    df_all = pd.concat(df, df_other)
+    df_all = pd.concat([df, df_other])
+    df_all.sort_values("start_time")
 
     cumulative_time = px.bar(df_all, x="job", y="total_time")
     cumulative_time.write_html(
