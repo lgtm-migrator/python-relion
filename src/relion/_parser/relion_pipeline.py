@@ -340,7 +340,7 @@ class RelionPipeline:
             job.environment["cluster_command"] = self._get_command(
                 basepath / job._path / "note.txt"
             )
-            if job._path.parent in [
+            if str(job._path.parent) in [
                 "Import",
                 "MotionCorr",
                 "CtfFind",
@@ -352,15 +352,15 @@ class RelionPipeline:
                 job.environment["job_start_times"] = self._get_job_times(
                     basepath / "pipeline_PREPROCESS.log", job._path
                 )
-            elif job._path.parent == "Class2D":
+            elif str(job._path.parent) == "Class2D":
                 job.environment["job_start_times"] = self._get_job_times(
                     basepath / "pipeline_CLASS2D.log", job._path
                 )
-            elif job._path.parent == "InitialModel":
+            elif str(job._path.parent) == "InitialModel":
                 job.environment["job_start_times"] = self._get_job_times(
                     basepath / "pipeline_INIMODEL.log", job._path
                 )
-            elif job._path.parent == "Class3D":
+            elif str(job._path.parent) == "Class3D":
                 job.environment["job_start_times"] = self._get_job_times(
                     basepath / "pipeline_CLASS3D.log", job._path
                 )

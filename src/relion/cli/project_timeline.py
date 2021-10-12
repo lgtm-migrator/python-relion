@@ -15,7 +15,10 @@ def run() -> None:
     # mc_jobs = proj._job_nodes.nodes[1].environment["cluster_job_ids"]
     job_times = []
     for job in proj._job_nodes.nodes:
-        job_times.extend([(t, job.name) for t in job.environment["job_start_times"]])
+        if job.environment["job_start_times"]:
+            job_times.extend(
+                [(t, job.name) for t in job.environment["job_start_times"]]
+            )
     job_times = sorted(job_times, key=lambda x: x[0])
     starts = [p[0] for p in job_times[:-1]]
     ends = [p[0] for p in job_times[1:]]
