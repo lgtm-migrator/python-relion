@@ -41,6 +41,7 @@ def run() -> None:
                 )
             )
     preproc_job_times = sorted(preproc_job_times, key=lambda x: x[0])
+    class2d_job_times = [p for p in other_job_times if "Class2D" in p[2]]
     preproc_colours = {
         "Import": "#1f77b4",
         "MotionCorr": "#ff7f0e",
@@ -63,6 +64,12 @@ def run() -> None:
         color=colours,
         labels=hover_names,
     )
+    class2d_trace = px.timeline(
+        x_start=[t[0] for t in class2d_job_times],
+        x_end=[t[1] for t in class2d_job_times],
+        hover_name="Class2D",
+    )
+    timeline.add_trace(class2d_trace)
     timeline.write_html(
         pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
     )
