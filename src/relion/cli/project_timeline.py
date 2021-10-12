@@ -23,7 +23,7 @@ def run() -> None:
                 [(t, job.name) for t in job.environment["job_start_times"]]
             )
     job_times = sorted(job_times, key=lambda x: x[0])
-    preproc = [
+    preproc = (
         "Import",
         "MotionCorr",
         "CtfFind",
@@ -31,10 +31,22 @@ def run() -> None:
         "AutoPick",
         "Extract",
         "Select",
-    ]
+    )
+    preproc_colours = {
+        "Import": "#1f77b4",
+        "MotionCorr": "#ff7f0e",
+        "CtfFind": "#2ca02c",
+        "External": "#d62728",
+        "AutoPick": "#9467bd",
+        "Extract": "#8c564b",
+        "Select": "#e377c2",
+    }
     preproc_job_times = [p for p in job_times if p[1].split("/")[0] in preproc]
     starts = [p[0] for p in preproc_job_times[:-1]]
     ends = [p[0] for p in preproc_job_times[1:]]
     hover_names = [p[1].split("/")[0] for p in preproc_job_times[:-1]]
-    timeline = px.timeline(x_start=starts, x_end=ends, hover_name=hover_names)
+    colours = [preproc_colours[p] for p in hover_names]
+    timeline = px.timeline(
+        x_start=starts, x_end=ends, hover_name=hover_names, color=colours
+    )
     timeline.write_html("./relion_project_preprocessing_timeline.html")
