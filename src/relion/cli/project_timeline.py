@@ -82,8 +82,8 @@ def run() -> None:
     time_spent = [
         datetime.timestamp(te) - datetime.timestamp(ts) for ts, te in zip(starts, ends)
     ]
-    time_spent_class2d = [
-        datetime.timestamp(t[1]) - datetime.timestamp(t[0]) for t in class2d_job_times
+    other_time_spent = [
+        datetime.timestamp(t[1]) - datetime.timestamp(t[0]) for t in other_job_times
     ]
     cumulative_time_spent = {"time": [], "job": [], "colour": []}
 
@@ -91,9 +91,9 @@ def run() -> None:
         cumulative_time_spent["time"].append(ts)
         cumulative_time_spent["job"].append(h)
         cumulative_time_spent["colour"].append("#ff9000")
-    for t in time_spent_class2d:
+    for t in other_time_spent:
         cumulative_time_spent["time"].append(t)
-        cumulative_time_spent["job"].append("Class2D")
+        cumulative_time_spent["job"].append(t[2].split("/")[0])
         cumulative_time_spent["colour"].append("#2ec4b6")
     df = pd.DataFrame(cumulative_time_spent)
     cumulative_time = px.bar(df, x="job", y="time", color="colour")
