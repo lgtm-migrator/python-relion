@@ -15,13 +15,26 @@ def run() -> None:
     # mc_jobs = proj._job_nodes.nodes[1].environment["cluster_job_ids"]
     job_times = []
     for job in proj._job_nodes.nodes:
-        if job.environment["job_start_times"]:
+        if job.environment["job_start_times"] and (
+            job.environment["alias"] is None
+            or "Icebreaker_group_batch" not in job.environment["alias"]
+        ):
             job_times.extend(
                 [(t, job.name) for t in job.environment["job_start_times"]]
             )
     job_times = sorted(job_times, key=lambda x: x[0])
-    starts = [p[0] for p in job_times[:-1]]
-    ends = [p[0] for p in job_times[1:]]
-    hover_names = [str(p[1]._path.parent) for p in job_times[:-1]]
+    preproc = [
+        "Import",
+        "MotionCorr",
+        "CtfFind",
+        "External",
+        "AutoPick",
+        "Extract",
+        "Select",
+    ]
+    preproc_job_times = [p for p in job_times if p[1].split("/")[0] in preproc]
+    starts = [p[0] for p in preproc_job_times[:-1]]
+    ends = [p[0] for p in preproc_job_times[1:]]
+    hover_names = [p[1].split("/")[0] for p in preproc_job_times[:-1]]
     timeline = px.timeline(x_start=starts, x_end=ends, hover_name=hover_names)
-    timeline.write_html("./relion_project_timeline.html")
+    timeline.write_html("./relion_project_preprocessing_timeline.html")
