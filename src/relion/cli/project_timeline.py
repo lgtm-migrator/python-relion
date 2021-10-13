@@ -4,8 +4,6 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from relion import Project
 
@@ -24,6 +22,7 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "cluster_start_time": [],
         "num_mics": [],
     }
     other_job_times = {
@@ -32,6 +31,7 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "cluster_start_time": [],
         "num_mics": [],
     }
     for job in proj._job_nodes.nodes:
@@ -57,8 +57,14 @@ def run() -> None:
                     preproc_job_times["cluster_id"].extend(
                         job.environment["cluster_job_ids"]
                     )
+                    preproc_job_times["cluster_start_time"].extend(
+                        job.environment["cluster_job_start_times"]
+                    )
                 else:
                     preproc_job_times["cluster_id"].extend(
+                        ["N/A" for _ in job.environment["job_start_times"]]
+                    )
+                    preproc_job_times["cluster_start_time"].extend(
                         ["N/A" for _ in job.environment["job_start_times"]]
                     )
                 if job.environment["cluster_job_mic_counts"]:
@@ -79,8 +85,12 @@ def run() -> None:
                 other_job_times["cluster_id"].append(
                     job.environment["cluster_job_ids"][0]
                 )
+                other_job_times["cluster_start_time"].append(
+                    job.environment["cluster_job_start_times"][0]
+                )
             else:
                 other_job_times["cluster_id"].append("N/A")
+                other_job_times["cluster_start_time"].append("N/A")
             other_job_times["num_mics"].append("N/A")
     sorted_times = sorted(preproc_job_times["start_time"])
     drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
@@ -88,6 +98,7 @@ def run() -> None:
     preproc_job_times["start_time"].pop(drop_index)
     preproc_job_times["job"].pop(drop_index)
     preproc_job_times["cluster_id"].pop(drop_index)
+    preproc_job_times["cluster_start_time"].pop(drop_index)
     preproc_job_times["schedule"].pop(drop_index)
     preproc_job_times["num_mics"].pop(drop_index)
     preproc_job_times["end_time"] = [
@@ -99,10 +110,22 @@ def run() -> None:
             preproc_job_times["start_time"], preproc_job_times["end_time"]
         )
     ]
+    preproc_job_times["run_time"] = [
+        datetime.timestamp(te) - datetime.timestamp(ts)
+        for ts, te in zip(
+            preproc_job_times["cluster_start_time"], preproc_job_times["end_time"]
+        )
+    ]
 
     other_job_times["total_time"] = [
         datetime.timestamp(te) - datetime.timestamp(ts)
         for ts, te in zip(other_job_times["start_time"], other_job_times["end_time"])
+    ]
+    other_job_times["run_time"] = [
+        datetime.timestamp(te) - datetime.timestamp(ts)
+        for ts, te in zip(
+            other_job_times["cluster_start_time"], other_job_times["end_time"]
+        )
     ]
 
     df = pd.DataFrame(preproc_job_times)
@@ -120,7 +143,7 @@ def run() -> None:
         df_all,
         x_start="start_time",
         x_end="end_time",
-        y="job",
+        y="schedule",
         hover_name="job",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
         color="job",
@@ -135,25 +158,31 @@ def run() -> None:
 
     df_all.sort_values("start_time")
 
-    fig = make_subplots(shared_xaxes=True)
-
-    cumulative_time = go.Bar(
+    cumulative_time = px.bar(
         df_all,
         x="job",
         y="total_time",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
     )
-    job_count = go.Bar(
+    run_time = px.bar(
+        df_all,
+        x="job",
+        y="run_time",
+        color="schedule",
+        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+    )
+    job_count = px.bar(
         df_all,
         x="job",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
     )
 
-    fig.add_trace(cumulative_time)
-    fig.add_trace(job_count)
-
-    fig.write_html(
+    cumulative_time.write_html(
         pathlib.Path(args.out_dir) / "cumulative_preprcoessing_job_time.html"
     )
+    run_time.write_html(
+        pathlib.Path(args.out_dir) / "cumulative_cluster_job_run_time.html"
+    )
+    job_count.write_html(pathlib.Path(args.out_dir) / "job_counts.html")

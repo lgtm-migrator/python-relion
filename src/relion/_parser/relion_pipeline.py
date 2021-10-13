@@ -334,6 +334,9 @@ class RelionPipeline:
             job.environment["cluster_job_ids"] = self._all_cluster_ids(
                 basepath / job._path / "run.out"
             )
+            job.environment["cluster_job_start_time"] = self._cluster_start_times(
+                basepath / job._path / "run.out"
+            )
             job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
                 basepath / job._path / "run.out"
             )
@@ -387,6 +390,17 @@ class RelionPipeline:
             if all(cid.isnumeric() for cid in cluster_ids):
                 return [int(cid) for cid in cluster_ids]
             return None
+        except FileNotFoundError:
+            return None
+
+    def _cluster_start_times(self, log_path):
+        try:
+            t = [
+                datetime.strptime(line.split(":")[0], "%Y-%m-%d %H:%M:%S.%f")
+                for line in open(log_path)
+                if "with job ID" in line
+            ]
+            return t
         except FileNotFoundError:
             return None
 
