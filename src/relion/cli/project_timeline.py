@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 from relion import Project
 
@@ -12,6 +13,7 @@ def run() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("proj_path")
     parser.add_argument("-o", "--out_dir", dest="out_dir", default="./")
+    parser.add_argument("-t", "--tag", dest="tag", default="")
     args = parser.parse_args()
     relion_dir = pathlib.Path(args.proj_path)
     proj = Project(relion_dir, cluster=True)
@@ -65,7 +67,7 @@ def run() -> None:
                         ["N/A" for _ in job.environment["job_start_times"]]
                     )
                     preproc_job_times["cluster_start_time"].extend(
-                        ["N/A" for _ in job.environment["job_start_times"]]
+                        job.environment["job_start_times"]
                     )
                 if job.environment["cluster_job_mic_counts"]:
                     preproc_job_times["num_mics"].extend(
@@ -90,7 +92,9 @@ def run() -> None:
                 )
             else:
                 other_job_times["cluster_id"].append("N/A")
-                other_job_times["cluster_start_time"].append("N/A")
+                other_job_times["cluster_start_time"].append(
+                    job.environment["start_time_stamp"]
+                )
             other_job_times["num_mics"].append("N/A")
     sorted_times = sorted(preproc_job_times["start_time"])
     drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
@@ -112,8 +116,16 @@ def run() -> None:
     ]
     preproc_job_times["run_time"] = [
         datetime.timestamp(te) - datetime.timestamp(ts)
+        if isinstance(ts, datetime)
+        else None
         for ts, te in zip(
             preproc_job_times["cluster_start_time"], preproc_job_times["end_time"]
+        )
+    ]
+    preproc_job_times["queue_time"] = [
+        tt - rt
+        for tt, rt in zip(
+            preproc_job_times["total_time"], preproc_job_times["run_time"]
         )
     ]
 
@@ -123,9 +135,15 @@ def run() -> None:
     ]
     other_job_times["run_time"] = [
         datetime.timestamp(te) - datetime.timestamp(ts)
+        if isinstance(ts, datetime)
+        else None
         for ts, te in zip(
             other_job_times["cluster_start_time"], other_job_times["end_time"]
         )
+    ]
+    other_job_times["queue_time"] = [
+        tt - rt
+        for tt, rt in zip(other_job_times["total_time"], other_job_times["run_time"])
     ]
 
     df = pd.DataFrame(preproc_job_times)
@@ -164,6 +182,7 @@ def run() -> None:
         y="total_time",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+        labels={"total_time": "Total job time [s]"},
     )
     run_time = px.bar(
         df_all,
@@ -171,12 +190,14 @@ def run() -> None:
         y="run_time",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+        labels={"run_time": "Cluster job time [s]"},
     )
     job_count = px.bar(
         df_all,
         x="job",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+        labels={"job": "Job count"},
     )
 
     cumulative_time.write_html(
@@ -186,3 +207,12 @@ def run() -> None:
         pathlib.Path(args.out_dir) / "cumulative_cluster_job_run_time.html"
     )
     job_count.write_html(pathlib.Path(args.out_dir) / "job_counts.html")
+
+    fig = go.Figure(
+        data=[
+            go.Bar(name="Run time", x=df_all.job, y=df_all.run_time),
+            go.Bar(name="Queue time", x=df_all.job, y=df_all.queue_time),
+        ]
+    )
+    fig.update_layout(barmode="group")
+    fig.write_html(pathlib.Path(args.out_dir) / "queue_times.html")

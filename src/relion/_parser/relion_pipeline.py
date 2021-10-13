@@ -334,7 +334,7 @@ class RelionPipeline:
             job.environment["cluster_job_ids"] = self._all_cluster_ids(
                 basepath / job._path / "run.out"
             )
-            job.environment["cluster_job_start_time"] = self._cluster_start_times(
+            job.environment["cluster_job_start_times"] = self._cluster_start_times(
                 basepath / job._path / "run.out"
             )
             job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
@@ -396,7 +396,9 @@ class RelionPipeline:
     def _cluster_start_times(self, log_path):
         try:
             t = [
-                datetime.strptime(line.split(":")[0], "%Y-%m-%d %H:%M:%S.%f")
+                datetime.datetime.strptime(
+                    ":".join(line.split(":")[:3]), "%Y-%m-%d %H:%M:%S.%f"
+                )
                 for line in open(log_path)
                 if "with job ID" in line
             ]
