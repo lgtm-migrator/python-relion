@@ -85,12 +85,14 @@ def run() -> None:
         "num_mics": [],
         "useful": [],
     }
+    preproc_end_times = []
     for job in proj._job_nodes.nodes:
         if "External" in job.name:
             tag = job.environment["alias"].split("/")[1]
         else:
             tag = job.name
         if job in proj.preprocess:
+            preproc_end_times.append(job.environment["end_time_stamp"])
             if job.environment["job_start_times"] and (
                 job.environment["alias"] is None
                 or "Icebreaker_group_batch" not in job.environment["alias"]
@@ -122,7 +124,7 @@ def run() -> None:
                     preproc_job_times["num_mics"].extend(
                         job.environment["cluster_job_mic_counts"]
                     )
-                    if tag.split("/")[0] == "Extract":
+                    if tag.split("/")[0] == "Extract" or "Icebreaker" in tag:
                         preproc_job_times["useful"].extend(
                             [None for _ in job.environment["job_start_times"]]
                         )
@@ -174,16 +176,17 @@ def run() -> None:
             else:
                 other_job_times["cluster_type"].append("gpu")
     sorted_times = sorted(preproc_job_times["start_time"])
-    drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
+    # drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
     end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
-    preproc_job_times["start_time"].pop(drop_index)
-    preproc_job_times["job"].pop(drop_index)
-    preproc_job_times["cluster_id"].pop(drop_index)
-    preproc_job_times["cluster_type"].pop(drop_index)
-    preproc_job_times["cluster_start_time"].pop(drop_index)
-    preproc_job_times["schedule"].pop(drop_index)
-    preproc_job_times["num_mics"].pop(drop_index)
-    preproc_job_times["useful"].pop(drop_index)
+    end_times[sorted_times[-1]] = max(preproc_end_times)
+    # preproc_job_times["start_time"].pop(drop_index)
+    # preproc_job_times["job"].pop(drop_index)
+    # preproc_job_times["cluster_id"].pop(drop_index)
+    # preproc_job_times["cluster_type"].pop(drop_index)
+    # preproc_job_times["cluster_start_time"].pop(drop_index)
+    # preproc_job_times["schedule"].pop(drop_index)
+    # preproc_job_times["num_mics"].pop(drop_index)
+    # preproc_job_times["useful"].pop(drop_index)
     preproc_job_times["end_time"] = [
         end_times[t] for t in preproc_job_times["start_time"]
     ]
@@ -274,6 +277,7 @@ def run() -> None:
                     ydata,
                     ("schedule", r),
                     hover_data=hover_data,
+                    width=0.8,
                 ),
                 row=1,
                 col=i + 1,
@@ -325,14 +329,14 @@ def run() -> None:
 
     for ydata in ("total_time", "run_time"):
         [
-            fig.add_trace(
+            fig_useful.add_trace(
                 _bar(
                     n,
                     df_all,
                     "job",
                     ydata,
                     ("useful", r),
-                    width=0.5,
+                    width=0.2,
                 ),
             )
             for n, r in [
