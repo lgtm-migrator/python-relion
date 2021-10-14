@@ -1,6 +1,7 @@
 import argparse
 import pathlib
-from datetime import datetime
+
+# from datetime import datetime
 from typing import Any, Optional, Tuple
 
 import numpy as np
@@ -63,7 +64,7 @@ def run() -> None:
     relion_dir = pathlib.Path(args.proj_path)
     proj = Project(relion_dir, cluster=True)
 
-    preproc_job_times = {
+    job_info = {
         "start_time": [],
         "end_time": [],
         "job": [],
@@ -74,17 +75,7 @@ def run() -> None:
         "num_mics": [],
         "useful": [],
     }
-    other_job_times = {
-        "start_time": [],
-        "end_time": [],
-        "job": [],
-        "schedule": [],
-        "cluster_id": [],
-        "cluster_type": [],
-        "cluster_start_time": [],
-        "num_mics": [],
-        "useful": [],
-    }
+
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
         if "External" in job.name:
@@ -97,169 +88,129 @@ def run() -> None:
                 job.environment["alias"] is None
                 or "Icebreaker_group_batch" not in job.environment["alias"]
             ):
-                preproc_job_times["start_time"].extend(
-                    job.environment["job_start_times"]
+                job_info["start_time"].extend(job.environment["job_start_times"])
+                job_info["start_time"].extend(
+                    [None for _ in job.environment["job_start_times"]]
                 )
-                preproc_job_times["job"].extend(
+                job_info["job"].extend(
                     [tag.split("/")[0] for _ in job.environment["job_start_times"]]
                 )
-                preproc_job_times["schedule"].extend(
+                job_info["schedule"].extend(
                     ["preprocess" for _ in job.environment["job_start_times"]]
                 )
                 if job.environment["cluster_job_ids"]:
-                    preproc_job_times["cluster_id"].extend(
-                        job.environment["cluster_job_ids"]
-                    )
-                    preproc_job_times["cluster_start_time"].extend(
+                    job_info["cluster_id"].extend(job.environment["cluster_job_ids"])
+                    job_info["cluster_start_time"].extend(
                         job.environment["cluster_job_start_times"]
                     )
                 else:
-                    preproc_job_times["cluster_id"].extend(
+                    job_info["cluster_id"].extend(
                         ["N/A" for _ in job.environment["job_start_times"]]
                     )
-                    preproc_job_times["cluster_start_time"].extend(
+                    job_info["cluster_start_time"].extend(
                         job.environment["job_start_times"]
                     )
                 if job.environment["cluster_job_mic_counts"]:
-                    preproc_job_times["num_mics"].extend(
+                    job_info["num_mics"].extend(
                         job.environment["cluster_job_mic_counts"]
                     )
                     if tag.split("/")[0] == "Extract" or "Icebreaker" in tag:
-                        preproc_job_times["useful"].extend(
+                        job_info["useful"].extend(
                             [None for _ in job.environment["job_start_times"]]
                         )
                     else:
-                        preproc_job_times["useful"].extend(
+                        job_info["useful"].extend(
                             [bool(p) for p in job.environment["cluster_job_mic_counts"]]
                         )
                 else:
-                    preproc_job_times["num_mics"].extend(
+                    job_info["num_mics"].extend(
                         ["N/A" for _ in job.environment["job_start_times"]]
                     )
-                    preproc_job_times["useful"].extend(
+                    job_info["useful"].extend(
                         [None for _ in job.environment["job_start_times"]]
                     )
                 if "Icebreaker" in tag:
-                    preproc_job_times["cluster_type"].extend(
+                    job_info["cluster_type"].extend(
                         ["cpu" for _ in job.environment["job_start_times"]]
                     )
                 elif tag.split("/")[0] in ("Import", "Select"):
-                    preproc_job_times["cluster_type"].extend(
+                    job_info["cluster_type"].extend(
                         [None for _ in job.environment["job_start_times"]]
                     )
                 else:
-                    preproc_job_times["cluster_type"].extend(
+                    job_info["cluster_type"].extend(
                         ["gpu" for _ in job.environment["job_start_times"]]
                     )
         else:
             tag = tag.split("_batch")[0]
-            other_job_times["start_time"].append(job.environment["start_time_stamp"])
-            other_job_times["end_time"].append(job.environment["end_time_stamp"])
-            other_job_times["job"].append(tag.split("/")[0])
-            other_job_times["schedule"].append(tag.split("/")[0])
+            job_info["start_time"].append(job.environment["start_time_stamp"])
+            job_info["end_time"].append(job.environment["end_time_stamp"])
+            job_info["job"].append(tag.split("/")[0])
+            job_info["schedule"].append(tag.split("/")[0])
             if job.environment["cluster_job_ids"]:
-                other_job_times["cluster_id"].append(
-                    job.environment["cluster_job_ids"][0]
-                )
-                other_job_times["cluster_start_time"].append(
+                job_info["cluster_id"].append(job.environment["cluster_job_ids"][0])
+                job_info["cluster_start_time"].append(
                     job.environment["cluster_job_start_times"][0]
                 )
             else:
-                other_job_times["cluster_id"].append("N/A")
-                other_job_times["cluster_start_time"].append(
+                job_info["cluster_id"].append("N/A")
+                job_info["cluster_start_time"].append(
                     job.environment["start_time_stamp"]
                 )
-            other_job_times["num_mics"].append("N/A")
-            other_job_times["useful"].append(None)
+            job_info["num_mics"].append("N/A")
+            job_info["useful"].append(None)
             if "Icebreaker" in tag:
-                other_job_times["cluster_type"].append("cpu")
+                job_info["cluster_type"].append("cpu")
             else:
-                other_job_times["cluster_type"].append("gpu")
-    sorted_times = sorted(preproc_job_times["start_time"])
-    # drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
-    end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
-    end_times[sorted_times[-1]] = max(preproc_end_times)
-    # preproc_job_times["start_time"].pop(drop_index)
-    # preproc_job_times["job"].pop(drop_index)
-    # preproc_job_times["cluster_id"].pop(drop_index)
-    # preproc_job_times["cluster_type"].pop(drop_index)
-    # preproc_job_times["cluster_start_time"].pop(drop_index)
-    # preproc_job_times["schedule"].pop(drop_index)
-    # preproc_job_times["num_mics"].pop(drop_index)
-    # preproc_job_times["useful"].pop(drop_index)
-    preproc_job_times["end_time"] = [
-        end_times[t] for t in preproc_job_times["start_time"]
-    ]
-    preproc_job_times["total_time"] = [
-        datetime.timestamp(te) - datetime.timestamp(ts)
-        for ts, te in zip(
-            preproc_job_times["start_time"], preproc_job_times["end_time"]
+                job_info["cluster_type"].append("gpu")
+
+    df = pd.DataFrame(job_info)
+    df.sort_values("start_time")
+
+    preproc_locs = df.loc[df["schedule"] == "preprocess"]
+    for i, l in enumerate(preproc_locs[:-1]):
+        df.loc(l)["end_time"] = df.start_time.loc(preproc_locs[i + 1])
+
+    df.loc(preproc_locs[-1])["end_time"] = max(preproc_end_times)
+
+    df["total_time"] = df["end_time"] - df["start_time"]
+    df["run_time"] = df["end_time"] - df["cluster_start_time"]
+    df["queue_time"] = df["total_time"] - df["run_time"]
+
+    # timeline = px.timeline(
+    #    df,
+    #    x_start="start_time",
+    #    x_end="end_time",
+    #    hover_name="job",
+    #    hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+    #    color="job",
+    # )
+    # full_timeline = px.timeline(
+    #    df_all,
+    #    x_start="start_time",
+    #    x_end="end_time",
+    #    y="schedule",
+    #    hover_name="job",
+    #    hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
+    #    color="job",
+    # )
+
+    # timeline.write_html(
+    #    pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
+    # )
+    # full_timeline.write_html(
+    #    pathlib.Path(args.out_dir) / "relion_project_timeline.html"
+    # )
+
+    figs = []
+
+    figs.append(
+        make_subplots(
+            rows=1,
+            cols=2,
+            shared_yaxes=True,
+            subplot_titles=("Total job time", "Run time"),
         )
-    ]
-    preproc_job_times["run_time"] = [
-        datetime.timestamp(te) - datetime.timestamp(ts)
-        if isinstance(ts, datetime)
-        else None
-        for ts, te in zip(
-            preproc_job_times["cluster_start_time"], preproc_job_times["end_time"]
-        )
-    ]
-    preproc_job_times["queue_time"] = [
-        tt - rt
-        for tt, rt in zip(
-            preproc_job_times["total_time"], preproc_job_times["run_time"]
-        )
-    ]
-
-    other_job_times["total_time"] = [
-        datetime.timestamp(te) - datetime.timestamp(ts)
-        for ts, te in zip(other_job_times["start_time"], other_job_times["end_time"])
-    ]
-    other_job_times["run_time"] = [
-        datetime.timestamp(te) - datetime.timestamp(ts)
-        if isinstance(ts, datetime)
-        else None
-        for ts, te in zip(
-            other_job_times["cluster_start_time"], other_job_times["end_time"]
-        )
-    ]
-    other_job_times["queue_time"] = [
-        tt - rt
-        for tt, rt in zip(other_job_times["total_time"], other_job_times["run_time"])
-    ]
-
-    df = pd.DataFrame(preproc_job_times)
-    df_other = pd.DataFrame(other_job_times)
-    df_all = pd.concat([df, df_other])
-    timeline = px.timeline(
-        df,
-        x_start="start_time",
-        x_end="end_time",
-        hover_name="job",
-        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
-        color="job",
-    )
-    full_timeline = px.timeline(
-        df_all,
-        x_start="start_time",
-        x_end="end_time",
-        y="schedule",
-        hover_name="job",
-        hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
-        color="job",
-    )
-
-    timeline.write_html(
-        pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
-    )
-    full_timeline.write_html(
-        pathlib.Path(args.out_dir) / "relion_project_timeline.html"
-    )
-
-    df_all.sort_values("start_time")
-
-    fig_times = make_subplots(
-        rows=1, cols=2, shared_yaxes=True, subplot_titles=("Total job time", "Run time")
     )
 
     hover_data = {
@@ -269,10 +220,10 @@ def run() -> None:
     }
     for i, ydata in enumerate(("total_time", "run_time")):
         [
-            fig_times.add_trace(
+            figs[0].add_trace(
                 _bar(
                     n,
-                    df_all,
+                    df,
                     "job",
                     ydata,
                     ("schedule", r),
@@ -291,10 +242,10 @@ def run() -> None:
             ]
         ]
 
-    fig_times.update_yaxes(title_text="Time [s]", row=1, col=1)
+    figs[0].update_yaxes(title_text="Time [s]", row=1, col=1)
 
     job_count = px.bar(
-        df_all,
+        df,
         x="job",
         color="schedule",
         hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
@@ -303,14 +254,14 @@ def run() -> None:
 
     job_count.write_html(pathlib.Path(args.out_dir) / "job_counts.html")
 
-    fig = go.Figure()
+    figs.append(go.Figure())
 
     for ydata in ("run_time", "queue_time"):
         [
-            fig.add_trace(
+            figs[1].add_trace(
                 _bar(
                     n,
-                    df_all,
+                    df,
                     "job",
                     ydata,
                     ("cluster_type", r),
@@ -323,16 +274,16 @@ def run() -> None:
             ]
         ]
 
-    fig.update_layout(barmode="group")
+    figs[1].update_layout(barmode="group")
 
-    fig_useful = go.Figure()
+    figs.append(go.Figure())
 
     for ydata in ("total_time", "run_time"):
         [
-            fig_useful.add_trace(
+            figs[2].add_trace(
                 _bar(
                     n,
-                    df_all,
+                    df,
                     "job",
                     ydata,
                     ("useful", r),
@@ -348,9 +299,7 @@ def run() -> None:
             ]
         ]
 
-    fig_useful.update_layout(barmode="group")
+    figs[2].update_layout(barmode="group")
 
     with open(pathlib.Path(args.out_dir) / "cluster_stats.html", "w") as f:
-        f.write(fig_times.to_html(full_html=False, include_plotlyjs="cdn"))
-        f.write(fig.to_html(full_html=False, include_plotlyjs="cdn"))
-        f.write(fig_useful.to_html(full_html=False, include_plotlyjs="cdn"))
+        [f.write(fig.to_html(full_html=False, include_plotlyjs="cdn")) for fig in figs]
