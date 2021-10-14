@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 from datetime import datetime
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,38 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from relion import Project
+
+
+def _bar(
+    name: str,
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    require: Tuple[str, str],
+    hover_data: Optional[dict] = None,
+    width: float = 0.8,
+) -> go.Bar:
+    restriced_data = data[getattr(data, require[0]).isin([require[1]])]
+    custom_data = []
+    hover_template = ""
+    if hover_data:
+        for i, (k, v) in enumerate(hover_data.items()):
+            if isinstance(getattr(restriced_data, v)[0], pd.Timestamp):
+                custom_data.append(
+                    [t.to_pydatetime() for t in getattr(restriced_data, v)]
+                )
+                hover_template += f"{k}: %{{customdata[{i}]|%Y/%m/%d %H:%M:%S}} <br>"
+            else:
+                custom_data.append(getattr(restriced_data, v))
+                hover_template += f"{k}: %{{customdata[{i}]}} <br>"
+    return go.Bar(
+        name=name,
+        x=getattr(restriced_data, x),
+        y=getattr(restriced_data, y),
+        width=width,
+        customdata=np.transpose(custom_data),
+        hovertemplate=hover_template,
+    )
 
 
 def run() -> None:
@@ -182,183 +215,33 @@ def run() -> None:
         rows=1, cols=2, shared_yaxes=True, subplot_titles=("Total job time", "Run time")
     )
 
-    fig_times.add_trace(
-        go.Bar(
-            name="Preprocessing",
-            x=df_all[df_all.schedule.isin(["preprocess"])].job,
-            y=df_all[df_all.schedule.isin(["preprocess"])].total_time,
-            width=0.8,
-            customdata=np.transpose(
-                [
-                    df_all[df_all.schedule.isin(["preprocess"])].cluster_id,
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["preprocess"])].start_time
-                    ],
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["preprocess"])].end_time
-                    ],
-                ]
-            ),
-            hovertemplate="cluster ID: %{customdata[0]} <br>start time: %{customdata[1]|%Y/%m/%d %H:%M:%S} <br> end time: %{customdata[2]|%Y/%m/%d %H:%M:%S}",
-        ),
-        row=1,
-        col=1,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Icebreaker group",
-            x=df_all[df_all.schedule.isin(["Icebreaker_group"])].job,
-            y=df_all[df_all.schedule.isin(["Icebreaker_group"])].total_time,
-            width=0.8,
-            customdata=np.transpose(
-                [
-                    df_all[df_all.schedule.isin(["Icebreaker_group"])].cluster_id,
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[
-                            df_all.schedule.isin(["Icebreaker_group"])
-                        ].start_time
-                    ],
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[
-                            df_all.schedule.isin(["Icebreaker_group"])
-                        ].end_time
-                    ],
-                ]
-            ),
-            hovertemplate="cluster ID: %{customdata[0]} <br>start time: %{customdata[1]|%Y/%m/%d %H:%M:%S} <br> end time: %{customdata[2]|%Y/%m/%d %H:%M:%S}",
-        ),
-        row=1,
-        col=1,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Class2D",
-            x=df_all[df_all.schedule.isin(["Class2D"])].job,
-            y=df_all[df_all.schedule.isin(["Class2D"])].total_time,
-            width=0.8,
-            customdata=np.transpose(
-                [
-                    df_all[df_all.schedule.isin(["Class2D"])].cluster_id,
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["Class2D"])].start_time
-                    ],
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["Class2D"])].end_time
-                    ],
-                ]
-            ),
-            hovertemplate="cluster ID: %{customdata[0]} <br>start time: %{customdata[1]|%Y/%m/%d %H:%M:%S} <br> end time: %{customdata[2]|%Y/%m/%d %H:%M:%S}",
-        ),
-        row=1,
-        col=1,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Initital model",
-            x=df_all[df_all.schedule.isin(["InitialModel"])].job,
-            y=df_all[df_all.schedule.isin(["InitialModel"])].total_time,
-            width=0.8,
-            customdata=np.transpose(
-                [
-                    df_all[df_all.schedule.isin(["InitialModel"])].cluster_id,
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[
-                            df_all.schedule.isin(["InitialModel"])
-                        ].start_time
-                    ],
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["InitialModel"])].end_time
-                    ],
-                ]
-            ),
-            hovertemplate="cluster ID: %{customdata[0]} <br>start time: %{customdata[1]|%Y/%m/%d %H:%M:%S} <br> end time: %{customdata[2]|%Y/%m/%d %H:%M:%S}",
-        ),
-        row=1,
-        col=1,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Class3D",
-            x=df_all[df_all.schedule.isin(["Class3D"])].job,
-            y=df_all[df_all.schedule.isin(["Class3D"])].total_time,
-            width=0.8,
-            customdata=np.transpose(
-                [
-                    df_all[df_all.schedule.isin(["Class3D"])].cluster_id,
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["Class3D"])].start_time
-                    ],
-                    [
-                        t.to_pydatetime()
-                        for t in df_all[df_all.schedule.isin(["Class3D"])].end_time
-                    ],
-                ]
-            ),
-            hovertemplate="cluster ID: %{customdata[0]} <br>start time: %{customdata[1]|%Y/%m/%d %H:%M:%S} <br> end time: %{customdata[2]|%Y/%m/%d %H:%M:%S}",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig_times.add_trace(
-        go.Bar(
-            name="Preprocessing",
-            x=df_all[df_all.schedule.isin(["preprocess"])].job,
-            y=df_all[df_all.schedule.isin(["preprocess"])].run_time,
-            width=0.8,
-        ),
-        row=1,
-        col=2,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Icebreaker group",
-            x=df_all[df_all.schedule.isin(["Icebreaker_group"])].job,
-            y=df_all[df_all.schedule.isin(["Icebreaker_group"])].run_time,
-            width=0.8,
-        ),
-        row=1,
-        col=2,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Class2D",
-            x=df_all[df_all.schedule.isin(["Class2D"])].job,
-            y=df_all[df_all.schedule.isin(["Class2D"])].run_time,
-            width=0.8,
-        ),
-        row=1,
-        col=2,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Initital model",
-            x=df_all[df_all.schedule.isin(["InitialModel"])].job,
-            y=df_all[df_all.schedule.isin(["InitialModel"])].run_time,
-            width=0.8,
-        ),
-        row=1,
-        col=2,
-    )
-    fig_times.add_trace(
-        go.Bar(
-            name="Class3D",
-            x=df_all[df_all.schedule.isin(["Class3D"])].job,
-            y=df_all[df_all.schedule.isin(["Class3D"])].run_time,
-            width=0.8,
-        ),
-        row=1,
-        col=2,
-    )
+    hover_data = {
+        "cluster ID": "cluster_id",
+        "start time": "start_time",
+        "end time": "end_time",
+    }
+    for i, ydata in enumerate(("total_time", "run_time")):
+        [
+            fig_times.add_trace(
+                _bar(
+                    n,
+                    df_all,
+                    "job",
+                    ydata,
+                    ("schedule", r),
+                    hover_data=hover_data,
+                ),
+                row=1,
+                col=i + 1,
+            )
+            for n, r in [
+                ("Preprocessing", "preprocess"),
+                ("Icebreaker group", "Icebreaker_group"),
+                ("Class2D", "Class2D"),
+                ("Initial model", "InitialModel"),
+                ("Class3D", "Class3D"),
+            ]
+        ]
 
     fig_times.update_yaxes(title_text="Time [s]", row=1, col=1)
 
