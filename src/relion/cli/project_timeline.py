@@ -112,7 +112,7 @@ def run() -> None:
                     "useful": useful,
                     "cluster_start_time": cs,
                 }
-                df.append(row)
+                df = df.append(row, ignore_index=True)
         else:
             tag = tag.split("_batch")[0]
             row = {
@@ -130,7 +130,7 @@ def run() -> None:
                 if cluster
                 else job.environment["start_time_stamp"],
             }
-            df.append(row)
+            df = df.append(row, ignore_index=True)
 
     df.sort_values("start_time", ignore_index=True, inplace=True)
 
