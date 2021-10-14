@@ -89,7 +89,7 @@ def run() -> None:
                 or "Icebreaker_group_batch" not in job.environment["alias"]
             ):
                 job_info["start_time"].extend(job.environment["job_start_times"])
-                job_info["start_time"].extend(
+                job_info["end_time"].extend(
                     [None for _ in job.environment["job_start_times"]]
                 )
                 job_info["job"].extend(
