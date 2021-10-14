@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,9 +17,8 @@ def _bar(
     data: pd.DataFrame,
     x: str,
     y: str,
-    require: Tuple[str, str],
+    require: Tuple[str, Any],
     hover_data: Optional[dict] = None,
-    width: float = 0.8,
     do_sum: bool = False,
     **kwargs,
 ) -> go.Bar:
@@ -49,7 +48,6 @@ def _bar(
         name=name,
         x=xdata,
         y=ydata,
-        width=width,
         customdata=np.transpose(custom_data),
         hovertemplate=hover_template,
         **kwargs,
@@ -71,8 +69,10 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "cluster_type": [],
         "cluster_start_time": [],
         "num_mics": [],
+        "useful": [],
     }
     other_job_times = {
         "start_time": [],
@@ -80,8 +80,10 @@ def run() -> None:
         "job": [],
         "schedule": [],
         "cluster_id": [],
+        "cluster_type": [],
         "cluster_start_time": [],
         "num_mics": [],
+        "useful": [],
     }
     for job in proj._job_nodes.nodes:
         if "External" in job.name:
@@ -120,9 +122,20 @@ def run() -> None:
                     preproc_job_times["num_mics"].extend(
                         job.environment["cluster_job_mic_counts"]
                     )
+                    if tag.split("/")[0] == "Extract":
+                        preproc_job_times["useful"].extend(
+                            [None for _ in job.environment["job_start_times"]]
+                        )
+                    else:
+                        preproc_job_times["useful"].extend(
+                            [bool(p) for p in job.environment["cluster_job_mic_counts"]]
+                        )
                 else:
                     preproc_job_times["num_mics"].extend(
                         ["N/A" for _ in job.environment["job_start_times"]]
+                    )
+                    preproc_job_times["useful"].extend(
+                        [None for _ in job.environment["job_start_times"]]
                     )
                 if "Icebreaker" in tag:
                     preproc_job_times["cluster_type"].extend(
@@ -155,6 +168,7 @@ def run() -> None:
                     job.environment["start_time_stamp"]
                 )
             other_job_times["num_mics"].append("N/A")
+            other_job_times["useful"].append(None)
             if "Icebreaker" in tag:
                 other_job_times["cluster_type"].append("cpu")
             else:
@@ -165,9 +179,11 @@ def run() -> None:
     preproc_job_times["start_time"].pop(drop_index)
     preproc_job_times["job"].pop(drop_index)
     preproc_job_times["cluster_id"].pop(drop_index)
+    preproc_job_times["cluster_type"].pop(drop_index)
     preproc_job_times["cluster_start_time"].pop(drop_index)
     preproc_job_times["schedule"].pop(drop_index)
     preproc_job_times["num_mics"].pop(drop_index)
+    preproc_job_times["useful"].pop(drop_index)
     preproc_job_times["end_time"] = [
         end_times[t] for t in preproc_job_times["start_time"]
     ]
@@ -283,38 +299,29 @@ def run() -> None:
 
     job_count.write_html(pathlib.Path(args.out_dir) / "job_counts.html")
 
-    # fig = go.Figure(
-    #    data=[
-    #        go.Bar(
-    #            name="Run time (GPU)",
-    #            x=jobs_gpu,
-    #            y=summed_run_times_gpu,
-    #            marker={"color": "#6883ba"},
-    #        ),
-    #        go.Bar(
-    #            name="Queue time (GPU)",
-    #            x=jobs_gpu,
-    #            y=summed_queue_times_gpu,
-    #            marker={"color": "#ff5666"},
-    #        ),
-    #        go.Bar(
-    #            name="Run time (CPU)",
-    #            x=jobs_cpu,
-    #            y=summed_run_times_cpu,
-    #            marker={"color": "#6883ba"},
-    #            marker_pattern_shape="x",
-    #        ),
-    #        go.Bar(
-    #            name="Queue time (CPU)",
-    #            x=jobs_cpu,
-    #            y=summed_queue_times_cpu,
-    #            marker={"color": "#ff5666"},
-    #            marker_pattern_shape="x",
-    #        ),
-    #    ],
-    # )
-
     fig = go.Figure()
+
+    for ydata in ("run_time", "queue_time"):
+        [
+            fig.add_trace(
+                _bar(
+                    n,
+                    df_all,
+                    "job",
+                    ydata,
+                    ("cluster_type", r),
+                    width=0.5,
+                ),
+            )
+            for n, r in [
+                (f"{'Run time' if ydata == 'run_time' else 'Queue time'} (GPU)", "gpu"),
+                (f"{'Run time' if ydata == 'run_time' else 'Queue time'} (GPU)", "cpu"),
+            ]
+        ]
+
+    fig.update_layout(barmode="group")
+
+    fig_useful = go.Figure()
 
     for ydata in ("total_time", "run_time"):
         [
@@ -324,116 +331,22 @@ def run() -> None:
                     df_all,
                     "job",
                     ydata,
-                    ("cluster_type", r),
-                    marker_pattern_shape=m,
+                    ("useful", r),
+                    width=0.5,
                 ),
             )
-            for n, r, m in [
-                ("GPU", "gpu", None),
-                ("CPU", "cpu", "x"),
+            for n, r in [
+                (f"{'Run time' if ydata == 'run_time' else 'Total time'} useful", True),
+                (
+                    f"{'Run time' if ydata == 'run_time' else 'Total time'} useless",
+                    False,
+                ),
             ]
         ]
 
-    fig.update_layout(barmode="group")
-    # fig.write_html(pathlib.Path(args.out_dir) / "queue_times.html")
+    fig_useful.update_layout(barmode="group")
 
-    jobs_gpu = [
-        j
-        for j in df.job.unique()
-        if j
-        not in (
-            "Icebreaker_G",
-            "Icebreaker_F",
-            "Icebreaker_group",
-            "Import",
-            "Select",
-            "Extract",
-        )
-    ]
-    summed_run_times_useful_gpu = [
-        sum(
-            p[1]["run_time"]
-            for p in df_all.iterrows()
-            if p[1]["job"] == j and p[1]["num_mics"]
-        )
-        for j in jobs_gpu
-    ]
-    summed_run_times_useless_gpu = [
-        sum(
-            p[1]["run_time"]
-            for p in df_all.iterrows()
-            if p[1]["job"] == j and p[1]["num_mics"] == 0
-        )
-        for j in jobs_gpu
-    ]
-    fig_run_use = go.Figure(
-        data=[
-            go.Bar(
-                name="Useful",
-                x=jobs_gpu,
-                y=summed_run_times_useful_gpu,
-                marker={"color": "#6883ba"},
-            ),
-            go.Bar(
-                name="Useless",
-                x=jobs_gpu,
-                y=summed_run_times_useless_gpu,
-                marker={"color": "#ff5666"},
-            ),
-        ],
-    )
-    fig_run_use.update_layout(barmode="group")
-    # fig.write_html(pathlib.Path(args.out_dir) / "run_times_useful_vs_useless.html")
-
-    jobs_gpu = [
-        j
-        for j in df.job.unique()
-        if j
-        not in (
-            "Icebreaker_G",
-            "Icebreaker_F",
-            "Icebreaker_group",
-            "Import",
-            "Select",
-            "Extract",
-        )
-    ]
-    summed_times_useful_gpu = [
-        sum(
-            p[1]["total_time"]
-            for p in df_all.iterrows()
-            if p[1]["job"] == j and p[1]["num_mics"]
-        )
-        for j in jobs_gpu
-    ]
-    summed_times_useless_gpu = [
-        sum(
-            p[1]["total_time"]
-            for p in df_all.iterrows()
-            if p[1]["job"] == j and p[1]["num_mics"] == 0
-        )
-        for j in jobs_gpu
-    ]
-    fig_total_use = go.Figure(
-        data=[
-            go.Bar(
-                name="Useful",
-                x=jobs_gpu,
-                y=summed_times_useful_gpu,
-                marker={"color": "#6883ba"},
-            ),
-            go.Bar(
-                name="Useless",
-                x=jobs_gpu,
-                y=summed_times_useless_gpu,
-                marker={"color": "#ff5666"},
-            ),
-        ],
-    )
-    fig_total_use.update_layout(barmode="group")
-    # fig.write_html(pathlib.Path(args.out_dir) / "total_times_useful_vs_useless.html")
     with open(pathlib.Path(args.out_dir) / "cluster_stats.html", "w") as f:
         f.write(fig_times.to_html(full_html=False, include_plotlyjs="cdn"))
         f.write(fig.to_html(full_html=False, include_plotlyjs="cdn"))
-        f.write(fig_run_use.to_html(full_html=False, include_plotlyjs="cdn"))
-        f.write(fig_total_use.to_html(full_html=False, include_plotlyjs="cdn"))
+        f.write(fig_useful.to_html(full_html=False, include_plotlyjs="cdn"))
