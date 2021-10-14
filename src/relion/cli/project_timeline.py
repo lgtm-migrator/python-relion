@@ -165,13 +165,13 @@ def run() -> None:
                 job_info["cluster_type"].append("gpu")
 
     df = pd.DataFrame(job_info)
-    df.sort_values("start_time")
+    df.sort_values("start_time", ignore_index=True, inplace=True)
 
-    preproc_locs = df.loc[df["schedule"] == "preprocess"]
+    preproc_locs = list(df.loc[df["schedule"] == "preprocess"].index.values)
     for i, l in enumerate(preproc_locs[:-1]):
-        df.loc(l)["end_time"] = df.start_time.loc(preproc_locs[i + 1])
+        df.loc[l, "end_time"] = df.loc[preproc_locs[i + 1], "start_time"]
 
-    df.loc(preproc_locs[-1])["end_time"] = max(preproc_end_times)
+    df.loc[preproc_locs[-1], "end_time"] = max(preproc_end_times)
 
     df["total_time"] = df["end_time"] - df["start_time"]
     df["run_time"] = df["end_time"] - df["cluster_start_time"]
