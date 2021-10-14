@@ -20,27 +20,39 @@ def _bar(
     require: Tuple[str, str],
     hover_data: Optional[dict] = None,
     width: float = 0.8,
+    do_sum: bool = False,
+    **kwargs,
 ) -> go.Bar:
-    restriced_data = data[getattr(data, require[0]).isin([require[1]])]
+    restricted_data = data[getattr(data, require[0]).isin([require[1]])]
     custom_data = []
     hover_template = ""
     if hover_data:
         for i, (k, v) in enumerate(hover_data.items()):
-            if isinstance(getattr(restriced_data, v)[0], pd.Timestamp):
+            if isinstance(getattr(restricted_data, v).iloc(0), pd.Timestamp):
                 custom_data.append(
-                    [t.to_pydatetime() for t in getattr(restriced_data, v)]
+                    [t.to_pydatetime() for t in getattr(restricted_data, v)]
                 )
                 hover_template += f"{k}: %{{customdata[{i}]|%Y/%m/%d %H:%M:%S}} <br>"
             else:
-                custom_data.append(getattr(restriced_data, v))
+                custom_data.append(getattr(restricted_data, v))
                 hover_template += f"{k}: %{{customdata[{i}]}} <br>"
+    if do_sum:
+        xdata = getattr(restricted_data, x).unique()
+        ydata = [
+            sum(p[1][y] for p in restricted_data.iterrows() if p[1][x] == j)
+            for j in xdata
+        ]
+    else:
+        xdata = getattr(restricted_data, x)
+        ydata = getattr(restricted_data, y)
     return go.Bar(
         name=name,
-        x=getattr(restriced_data, x),
-        y=getattr(restriced_data, y),
+        x=xdata,
+        y=ydata,
         width=width,
         customdata=np.transpose(custom_data),
         hovertemplate=hover_template,
+        **kwargs,
     )
 
 
@@ -112,6 +124,18 @@ def run() -> None:
                     preproc_job_times["num_mics"].extend(
                         ["N/A" for _ in job.environment["job_start_times"]]
                     )
+                if "Icebreaker" in tag:
+                    preproc_job_times["cluster_type"].extend(
+                        ["cpu" for _ in job.environment["job_start_times"]]
+                    )
+                elif tag.split("/")[0] in ("Import", "Select"):
+                    preproc_job_times["cluster_type"].extend(
+                        [None for _ in job.environment["job_start_times"]]
+                    )
+                else:
+                    preproc_job_times["cluster_type"].extend(
+                        ["gpu" for _ in job.environment["job_start_times"]]
+                    )
         else:
             tag = tag.split("_batch")[0]
             other_job_times["start_time"].append(job.environment["start_time_stamp"])
@@ -131,6 +155,10 @@ def run() -> None:
                     job.environment["start_time_stamp"]
                 )
             other_job_times["num_mics"].append("N/A")
+            if "Icebreaker" in tag:
+                other_job_times["cluster_type"].append("cpu")
+            else:
+                other_job_times["cluster_type"].append("gpu")
     sorted_times = sorted(preproc_job_times["start_time"])
     drop_index = preproc_job_times["start_time"].index(sorted_times[-1])
     end_times = {ts: sorted_times[i + 1] for i, ts in enumerate(sorted_times[:-1])}
@@ -255,63 +283,57 @@ def run() -> None:
 
     job_count.write_html(pathlib.Path(args.out_dir) / "job_counts.html")
 
-    jobs_gpu = [
-        j
-        for j in df_all.job.unique()
-        if j
-        not in ("Icebreaker_G", "Icebreaker_F", "Icebreaker_group", "Import", "Select")
-    ]
-    jobs_cpu = list(
-        {
-            j for j in df_all.job.unique() if j not in ("Import", "Select")
-        }.symmetric_difference(set(jobs_gpu))
-    )
-    summed_run_times_gpu = [
-        sum(p[1]["run_time"] for p in df_all.iterrows() if p[1]["job"] == j)
-        for j in jobs_gpu
-    ]
-    summed_queue_times_gpu = [
-        sum(p[1]["queue_time"] for p in df_all.iterrows() if p[1]["job"] == j)
-        for j in jobs_gpu
-    ]
-    summed_run_times_cpu = [
-        sum(p[1]["run_time"] for p in df_all.iterrows() if p[1]["job"] == j)
-        for j in jobs_cpu
-    ]
-    summed_queue_times_cpu = [
-        sum(p[1]["queue_time"] for p in df_all.iterrows() if p[1]["job"] == j)
-        for j in jobs_cpu
-    ]
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                name="Run time (GPU)",
-                x=jobs_gpu,
-                y=summed_run_times_gpu,
-                marker={"color": "#6883ba"},
-            ),
-            go.Bar(
-                name="Queue time (GPU)",
-                x=jobs_gpu,
-                y=summed_queue_times_gpu,
-                marker={"color": "#ff5666"},
-            ),
-            go.Bar(
-                name="Run time (CPU)",
-                x=jobs_cpu,
-                y=summed_run_times_cpu,
-                marker={"color": "#6883ba"},
-                marker_pattern_shape="x",
-            ),
-            go.Bar(
-                name="Queue time (CPU)",
-                x=jobs_cpu,
-                y=summed_queue_times_cpu,
-                marker={"color": "#ff5666"},
-                marker_pattern_shape="x",
-            ),
-        ],
-    )
+    # fig = go.Figure(
+    #    data=[
+    #        go.Bar(
+    #            name="Run time (GPU)",
+    #            x=jobs_gpu,
+    #            y=summed_run_times_gpu,
+    #            marker={"color": "#6883ba"},
+    #        ),
+    #        go.Bar(
+    #            name="Queue time (GPU)",
+    #            x=jobs_gpu,
+    #            y=summed_queue_times_gpu,
+    #            marker={"color": "#ff5666"},
+    #        ),
+    #        go.Bar(
+    #            name="Run time (CPU)",
+    #            x=jobs_cpu,
+    #            y=summed_run_times_cpu,
+    #            marker={"color": "#6883ba"},
+    #            marker_pattern_shape="x",
+    #        ),
+    #        go.Bar(
+    #            name="Queue time (CPU)",
+    #            x=jobs_cpu,
+    #            y=summed_queue_times_cpu,
+    #            marker={"color": "#ff5666"},
+    #            marker_pattern_shape="x",
+    #        ),
+    #    ],
+    # )
+
+    fig = go.Figure()
+
+    for ydata in ("total_time", "run_time"):
+        [
+            fig.add_trace(
+                _bar(
+                    n,
+                    df_all,
+                    "job",
+                    ydata,
+                    ("cluster_type", r),
+                    marker_pattern_shape=m,
+                ),
+            )
+            for n, r, m in [
+                ("GPU", "gpu", None),
+                ("CPU", "cpu", "x"),
+            ]
+        ]
+
     fig.update_layout(barmode="group")
     # fig.write_html(pathlib.Path(args.out_dir) / "queue_times.html")
 
