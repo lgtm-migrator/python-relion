@@ -71,10 +71,11 @@ def run() -> None:
         "schedule": [],
         "cluster_id": [],
         "cluster_type": [],
-        "cluster_start_time": [],
         "num_mics": [],
         "useful": [],
+        "cluster_start_time": [],
     }
+    df = pd.DataFrame(job_info)
 
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
@@ -82,89 +83,55 @@ def run() -> None:
             tag = job.environment["alias"].split("/")[1]
         else:
             tag = job.name
+        cluster = bool(job.environment["cluster_job_ids"])
         if job in proj.preprocess:
             preproc_end_times.append(job.environment["end_time_stamp"])
-            if job.environment["job_start_times"] and (
-                job.environment["alias"] is None
-                or "Icebreaker_group_batch" not in job.environment["alias"]
-            ):
-                job_info["start_time"].extend(job.environment["job_start_times"])
-                job_info["end_time"].extend(
-                    [None for _ in job.environment["job_start_times"]]
+            for i, st in enumerate(job.environment["job_start_times"]):
+                cji = job.environment["cluster_job_ids"][i] if cluster else "N/A"
+                mc = (
+                    job.environment["cluster_job_mic_counts"][i]
+                    if cluster and not ("Extract" in tag or "Icebreaker" in tag)
+                    else None
                 )
-                job_info["job"].extend(
-                    [tag.split("/")[0] for _ in job.environment["job_start_times"]]
-                )
-                job_info["schedule"].extend(
-                    ["preprocess" for _ in job.environment["job_start_times"]]
-                )
-                if job.environment["cluster_job_ids"]:
-                    job_info["cluster_id"].extend(job.environment["cluster_job_ids"])
-                    job_info["cluster_start_time"].extend(
-                        job.environment["cluster_job_start_times"]
-                    )
-                else:
-                    job_info["cluster_id"].extend(
-                        ["N/A" for _ in job.environment["job_start_times"]]
-                    )
-                    job_info["cluster_start_time"].extend(
-                        job.environment["job_start_times"]
-                    )
-                if job.environment["cluster_job_mic_counts"]:
-                    job_info["num_mics"].extend(
-                        job.environment["cluster_job_mic_counts"]
-                    )
-                    if tag.split("/")[0] == "Extract" or "Icebreaker" in tag:
-                        job_info["useful"].extend(
-                            [None for _ in job.environment["job_start_times"]]
-                        )
-                    else:
-                        job_info["useful"].extend(
-                            [bool(p) for p in job.environment["cluster_job_mic_counts"]]
-                        )
-                else:
-                    job_info["num_mics"].extend(
-                        ["N/A" for _ in job.environment["job_start_times"]]
-                    )
-                    job_info["useful"].extend(
-                        [None for _ in job.environment["job_start_times"]]
-                    )
+                cs = job.environment["cluster_job_start_times"][i] if cluster else st
+                useful = bool(mc) if mc is not None else None
                 if "Icebreaker" in tag:
-                    job_info["cluster_type"].extend(
-                        ["cpu" for _ in job.environment["job_start_times"]]
-                    )
+                    cltype = "cpu"
                 elif tag.split("/")[0] in ("Import", "Select"):
-                    job_info["cluster_type"].extend(
-                        [None for _ in job.environment["job_start_times"]]
-                    )
+                    cltype = None
                 else:
-                    job_info["cluster_type"].extend(
-                        ["gpu" for _ in job.environment["job_start_times"]]
-                    )
+                    cltype = "gpu"
+                row = {
+                    "start_time": st,
+                    "end_time": None,
+                    "job": tag.split("/")[0],
+                    "schedule": "preprocess",
+                    "cluster_id": cji,
+                    "cluster_type": cltype,
+                    "num_mics": mc,
+                    "useful": useful,
+                    "cluster_start_time": cs,
+                }
+                df.append(row)
         else:
             tag = tag.split("_batch")[0]
-            job_info["start_time"].append(job.environment["start_time_stamp"])
-            job_info["end_time"].append(job.environment["end_time_stamp"])
-            job_info["job"].append(tag.split("/")[0])
-            job_info["schedule"].append(tag.split("/")[0])
-            if job.environment["cluster_job_ids"]:
-                job_info["cluster_id"].append(job.environment["cluster_job_ids"][0])
-                job_info["cluster_start_time"].append(
-                    job.environment["cluster_job_start_times"][0]
-                )
-            else:
-                job_info["cluster_id"].append("N/A")
-                job_info["cluster_start_time"].append(
-                    job.environment["start_time_stamp"]
-                )
-            job_info["num_mics"].append("N/A")
-            job_info["useful"].append(None)
-            if "Icebreaker" in tag:
-                job_info["cluster_type"].append("cpu")
-            else:
-                job_info["cluster_type"].append("gpu")
+            row = {
+                "start_time": job.environment["start_time_stamp"],
+                "end_time": job.environment["end_time_stamp"],
+                "job": tag.split("/")[0],
+                "schedule": tag.split("/")[0],
+                "cluster_id": job.environment["cluster_job_ids"][0]
+                if cluster
+                else "N/A",
+                "cluster_type": "cpu" if "Icebreaker" in tag else "gpu",
+                "num_mics": "N/A",
+                "useful": None,
+                "cluster_start_time": job.environment["cluster_job_start_times"][0]
+                if cluster
+                else job.environment["start_time_stamp"],
+            }
+            df.append(row)
 
-    df = pd.DataFrame(job_info)
     df.sort_values("start_time", ignore_index=True, inplace=True)
 
     preproc_locs = list(df.loc[df["schedule"] == "preprocess"].index.values)
