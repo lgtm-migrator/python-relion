@@ -4,6 +4,7 @@ import pathlib
 # from datetime import datetime
 from typing import Any, Optional, Tuple
 
+import mrcfile
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -24,8 +25,19 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
         "num_mics": [],
         "useful": [],
         "cluster_start_time": [],
+        "image_size": [],
     }
     df = pd.DataFrame(job_info)
+
+    try:
+        for job in proj._job_nodes.nodes:
+            if "MotionCorr" in job.name:
+                micrograph_glob = (proj.basepath / job.name / "Movies").glob("**/*.mrc")
+                mic = next(micrograph_glob)
+                with mrcfile.open(mic) as mrc:
+                    image_size = mrc.data.shape[:2]
+    except FileNotFoundError:
+        image_size = (None, None)
 
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
@@ -61,6 +73,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
                     "num_mics": mc,
                     "useful": useful,
                     "cluster_start_time": cs,
+                    "image_size": image_size,
                 }
                 df = df.append(row, ignore_index=True)
         else:
@@ -79,6 +92,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
                 "cluster_start_time": job.environment["cluster_job_start_times"][0]
                 if cluster
                 else job.environment["start_time_stamp"],
+                "image_size": image_size,
             }
             df = df.append(row, ignore_index=True)
 
