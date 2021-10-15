@@ -105,6 +105,7 @@ def _bar(
     require: Tuple[str, Any],
     hover_data: Optional[dict] = None,
     do_sum: bool = False,
+    base: Optional[str] = None,
     **kwargs,
 ) -> go.Bar:
     restricted_data = data[getattr(data, require[0]).isin([require[1]])]
@@ -135,6 +136,7 @@ def _bar(
         y=ydata,
         customdata=np.transpose(custom_data),
         hovertemplate=hover_template,
+        base=getattr(restricted_data, base) if base else None,
         **kwargs,
     )
 
@@ -177,6 +179,37 @@ def run() -> None:
 
     figs = []
 
+    figs.append(go.Figure())
+
+    hover_data = {
+        "cluster ID": "cluster_id",
+        "start time": "start_time",
+        "end time": "end_time",
+    }
+
+    [
+        figs[-1].add_trace(
+            _bar(
+                n,
+                df,
+                "total_time",
+                "job",
+                ("schedule", r),
+                hover_data=hover_data,
+                base="start_time",
+                width=0.8,
+                orientation="h",
+            ),
+        )
+        for n, r in [
+            ("Preprocessing", "preprocess"),
+            ("Icebreaker group", "Icebreaker_group"),
+            ("Class2D", "Class2D"),
+            ("Initial model", "InitialModel"),
+            ("Class3D", "Class3D"),
+        ]
+    ]
+
     figs.append(
         make_subplots(
             rows=1,
@@ -186,14 +219,9 @@ def run() -> None:
         )
     )
 
-    hover_data = {
-        "cluster ID": "cluster_id",
-        "start time": "start_time",
-        "end time": "end_time",
-    }
     for i, ydata in enumerate(("total_time", "run_time")):
         [
-            figs[0].add_trace(
+            figs[-1].add_trace(
                 _bar(
                     n,
                     df,
@@ -215,7 +243,7 @@ def run() -> None:
             ]
         ]
 
-    figs[0].update_yaxes(title_text="Time [s]", row=1, col=1)
+    figs[-1].update_yaxes(title_text="Time [s]", row=1, col=1)
 
     job_count = px.bar(
         df,
@@ -231,7 +259,7 @@ def run() -> None:
 
     for ydata in ("run_time", "queue_time"):
         [
-            figs[1].add_trace(
+            figs[-1].add_trace(
                 _bar(
                     n,
                     df,
@@ -247,13 +275,13 @@ def run() -> None:
             ]
         ]
 
-    figs[1].update_layout(barmode="group")
+    figs[-1].update_layout(barmode="group")
 
     figs.append(go.Figure())
 
     for ydata in ("total_time", "run_time"):
         [
-            figs[2].add_trace(
+            figs[-1].add_trace(
                 _bar(
                     n,
                     df,
@@ -272,7 +300,7 @@ def run() -> None:
             ]
         ]
 
-    figs[2].update_layout(barmode="group")
+    figs[-1].update_layout(barmode="group")
 
     with open(pathlib.Path(args.out_dir) / "cluster_stats.html", "w") as f:
         [f.write(fig.to_html(full_html=False, include_plotlyjs="cdn")) for fig in figs]
