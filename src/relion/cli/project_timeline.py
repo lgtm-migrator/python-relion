@@ -158,31 +158,6 @@ def run() -> None:
 
     df = _get_dataframe(proj)
 
-    # timeline = px.timeline(
-    #    df,
-    #    x_start="start_time",
-    #    x_end="end_time",
-    #    hover_name="job",
-    #    hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
-    #    color="job",
-    # )
-    # full_timeline = px.timeline(
-    #    df_all,
-    #    x_start="start_time",
-    #    x_end="end_time",
-    #    y="schedule",
-    #    hover_name="job",
-    #    hover_data=["start_time", "end_time", "cluster_id", "num_mics", "total_time"],
-    #    color="job",
-    # )
-
-    # timeline.write_html(
-    #    pathlib.Path(args.out_dir) / "relion_project_preprocessing_timeline.html"
-    # )
-    # full_timeline.write_html(
-    #    pathlib.Path(args.out_dir) / "relion_project_timeline.html"
-    # )
-
     figs = []
 
     figs.append(go.Figure())
@@ -192,29 +167,6 @@ def run() -> None:
         "start time": "start_time",
         "end time": "end_time",
     }
-
-    [
-        figs[-1].add_trace(
-            _bar(
-                n,
-                df,
-                "total_time",
-                "job",
-                ("schedule", r),
-                hover_data=hover_data,
-                base="start_time",
-                width=0.8,
-                orientation="h",
-            ),
-        )
-        for n, r in [
-            ("Preprocessing", "preprocess"),
-            ("Icebreaker group", "Icebreaker_group"),
-            ("Class2D", "Class2D"),
-            ("Initial model", "InitialModel"),
-            ("Class3D", "Class3D"),
-        ]
-    ]
 
     figs.append(
         make_subplots(
