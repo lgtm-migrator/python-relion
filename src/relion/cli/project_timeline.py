@@ -89,6 +89,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
         df.loc[l, "end_time"] = df.loc[preproc_locs[i + 1], "start_time"]
 
     df.loc[preproc_locs[-1], "end_time"] = max(preproc_end_times)
+    df["end_time"] = pd.to_datetime(df["end_time"])
 
     df["total_time"] = df["end_time"] - df["start_time"]
     df["run_time"] = df["end_time"] - df["cluster_start_time"]
