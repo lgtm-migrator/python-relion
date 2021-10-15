@@ -160,8 +160,6 @@ def run() -> None:
 
     figs = []
 
-    figs.append(go.Figure())
-
     hover_data = {
         "cluster ID": "cluster_id",
         "start time": "start_time",
