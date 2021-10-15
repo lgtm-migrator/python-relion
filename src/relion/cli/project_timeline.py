@@ -128,8 +128,14 @@ def _bar(
             for j in xdata
         ]
     else:
-        xdata = getattr(restricted_data, x)
-        ydata = getattr(restricted_data, y)
+        if isinstance(getattr(restricted_data, x).iloc[0], pd.Timestamp):
+            xdata = [t.to_pydatetime() for t in getattr(restricted_data, x)]
+        else:
+            xdata = getattr(restricted_data, x)
+        if isinstance(getattr(restricted_data, y).iloc[0], pd.Timestamp):
+            ydata = [t.to_pydatetime() for t in getattr(restricted_data, y)]
+        else:
+            ydata = getattr(restricted_data, y)
     return go.Bar(
         name=name,
         x=xdata,
