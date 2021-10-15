@@ -234,6 +234,7 @@ def run() -> None:
         ]
 
     figs[-1].update_layout(barmode="group")
+    figs[-1].update_yaxes(title_text="Time [s]")
 
     figs.append(go.Figure())
 
@@ -259,6 +260,7 @@ def run() -> None:
         ]
 
     figs[-1].update_layout(barmode="group")
+    figs[-1].update_yaxes(title_text="Time [s]")
 
     with open(pathlib.Path(args.out_dir) / "cluster_stats.html", "w") as f:
         [f.write(fig.to_html(full_html=False, include_plotlyjs="cdn")) for fig in figs]
