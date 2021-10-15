@@ -28,7 +28,7 @@ def _bar(
     hover_template = ""
     if hover_data:
         for i, (k, v) in enumerate(hover_data.items()):
-            if isinstance(getattr(restricted_data, v).iloc(0), pd.Timestamp):
+            if isinstance(getattr(restricted_data, v).iloc[0], pd.Timestamp):
                 custom_data.append(
                     [t.to_pydatetime() for t in getattr(restricted_data, v)]
                 )
