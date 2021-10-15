@@ -13,57 +13,7 @@ from plotly.subplots import make_subplots
 from relion import Project
 
 
-def _bar(
-    name: str,
-    data: pd.DataFrame,
-    x: str,
-    y: str,
-    require: Tuple[str, Any],
-    hover_data: Optional[dict] = None,
-    do_sum: bool = False,
-    **kwargs,
-) -> go.Bar:
-    restricted_data = data[getattr(data, require[0]).isin([require[1]])]
-    custom_data = []
-    hover_template = ""
-    if hover_data:
-        for i, (k, v) in enumerate(hover_data.items()):
-            if isinstance(getattr(restricted_data, v).iloc[0], pd.Timestamp):
-                custom_data.append(
-                    [t.to_pydatetime() for t in getattr(restricted_data, v)]
-                )
-                hover_template += f"{k}: %{{customdata[{i}]|%Y/%m/%d %H:%M:%S}} <br>"
-            else:
-                custom_data.append(getattr(restricted_data, v))
-                hover_template += f"{k}: %{{customdata[{i}]}} <br>"
-    if do_sum:
-        xdata = getattr(restricted_data, x).unique()
-        ydata = [
-            sum(p[1][y] for p in restricted_data.iterrows() if p[1][x] == j)
-            for j in xdata
-        ]
-    else:
-        xdata = getattr(restricted_data, x)
-        ydata = getattr(restricted_data, y)
-    return go.Bar(
-        name=name,
-        x=xdata,
-        y=ydata,
-        customdata=np.transpose(custom_data),
-        hovertemplate=hover_template,
-        **kwargs,
-    )
-
-
-def run() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("proj_path")
-    parser.add_argument("-o", "--out_dir", dest="out_dir", default="./")
-    parser.add_argument("-t", "--tag", dest="tag", default="")
-    args = parser.parse_args()
-    relion_dir = pathlib.Path(args.proj_path)
-    proj = Project(relion_dir, cluster=True)
-
+def _get_dataframe(proj: Project) -> pd.DataFrame:
     job_info = {
         "start_time": [],
         "end_time": [],
@@ -143,6 +93,62 @@ def run() -> None:
     df["total_time"] = df["end_time"] - df["start_time"]
     df["run_time"] = df["end_time"] - df["cluster_start_time"]
     df["queue_time"] = df["total_time"] - df["run_time"]
+
+    return df
+
+
+def _bar(
+    name: str,
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    require: Tuple[str, Any],
+    hover_data: Optional[dict] = None,
+    do_sum: bool = False,
+    **kwargs,
+) -> go.Bar:
+    restricted_data = data[getattr(data, require[0]).isin([require[1]])]
+    custom_data = []
+    hover_template = ""
+    if hover_data:
+        for i, (k, v) in enumerate(hover_data.items()):
+            if isinstance(getattr(restricted_data, v).iloc[0], pd.Timestamp):
+                custom_data.append(
+                    [t.to_pydatetime() for t in getattr(restricted_data, v)]
+                )
+                hover_template += f"{k}: %{{customdata[{i}]|%Y/%m/%d %H:%M:%S}} <br>"
+            else:
+                custom_data.append(getattr(restricted_data, v))
+                hover_template += f"{k}: %{{customdata[{i}]}} <br>"
+    if do_sum:
+        xdata = getattr(restricted_data, x).unique()
+        ydata = [
+            sum(p[1][y] for p in restricted_data.iterrows() if p[1][x] == j)
+            for j in xdata
+        ]
+    else:
+        xdata = getattr(restricted_data, x)
+        ydata = getattr(restricted_data, y)
+    return go.Bar(
+        name=name,
+        x=xdata,
+        y=ydata,
+        customdata=np.transpose(custom_data),
+        hovertemplate=hover_template,
+        **kwargs,
+    )
+
+
+def run() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("proj_path")
+    parser.add_argument("-o", "--out_dir", dest="out_dir", default="./")
+    parser.add_argument("-t", "--tag", dest="tag", default="")
+    args = parser.parse_args()
+    relion_dir = pathlib.Path(args.proj_path)
+    proj = Project(relion_dir, cluster=True)
+
+    df = _get_dataframe(proj)
 
     # timeline = px.timeline(
     #    df,
