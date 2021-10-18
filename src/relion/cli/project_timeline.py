@@ -41,61 +41,66 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
 
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
-        if "External" in job.name:
-            tag = job.environment["alias"].split("/")[1]
-        else:
-            tag = job.name
-        cluster = bool(job.environment["cluster_job_ids"])
-        if job in proj.preprocess:
-            if job.environment["end_time_stamp"]:
+        if (
+            job.environment["end_time_stamp"]
+            and job.environment["end_time_stamp"] > job.environment["start_time_stamp"]
+        ):
+            if "External" in job.name:
+                tag = job.environment["alias"].split("/")[1]
+            else:
+                tag = job.name
+            cluster = bool(job.environment["cluster_job_ids"])
+            if job in proj.preprocess:
                 preproc_end_times.append(job.environment["end_time_stamp"])
-            for i, st in enumerate(job.environment["job_start_times"]):
-                cji = job.environment["cluster_job_ids"][i] if cluster else "N/A"
-                mc = (
-                    job.environment["cluster_job_mic_counts"][i]
-                    if cluster and not ("Extract" in tag or "Icebreaker" in tag)
-                    else None
-                )
-                cs = job.environment["cluster_job_start_times"][i] if cluster else st
-                useful = bool(mc) if mc is not None else None
-                if "Icebreaker" in tag:
-                    cltype = "cpu"
-                elif tag.split("/")[0] in ("Import", "Select"):
-                    cltype = None
-                else:
-                    cltype = "gpu"
+                for i, st in enumerate(job.environment["job_start_times"]):
+                    cji = job.environment["cluster_job_ids"][i] if cluster else "N/A"
+                    mc = (
+                        job.environment["cluster_job_mic_counts"][i]
+                        if cluster and not ("Extract" in tag or "Icebreaker" in tag)
+                        else None
+                    )
+                    cs = (
+                        job.environment["cluster_job_start_times"][i] if cluster else st
+                    )
+                    useful = bool(mc) if mc is not None else None
+                    if "Icebreaker" in tag:
+                        cltype = "cpu"
+                    elif tag.split("/")[0] in ("Import", "Select"):
+                        cltype = None
+                    else:
+                        cltype = "gpu"
+                    row = {
+                        "start_time": st,
+                        "end_time": None,
+                        "job": tag.split("/")[0],
+                        "schedule": "preprocess",
+                        "cluster_id": cji,
+                        "cluster_type": cltype,
+                        "num_mics": mc,
+                        "useful": useful,
+                        "cluster_start_time": cs,
+                        "image_size": image_size,
+                    }
+                    df = df.append(row, ignore_index=True)
+            else:
+                tag = tag.split("_batch")[0]
                 row = {
-                    "start_time": st,
-                    "end_time": None,
+                    "start_time": job.environment["start_time_stamp"],
+                    "end_time": job.environment["end_time_stamp"],
                     "job": tag.split("/")[0],
-                    "schedule": "preprocess",
-                    "cluster_id": cji,
-                    "cluster_type": cltype,
-                    "num_mics": mc,
-                    "useful": useful,
-                    "cluster_start_time": cs,
+                    "schedule": tag.split("/")[0],
+                    "cluster_id": job.environment["cluster_job_ids"][0]
+                    if cluster
+                    else "N/A",
+                    "cluster_type": "cpu" if "Icebreaker" in tag else "gpu",
+                    "num_mics": "N/A",
+                    "useful": None,
+                    "cluster_start_time": job.environment["cluster_job_start_times"][0]
+                    if cluster
+                    else job.environment["start_time_stamp"],
                     "image_size": image_size,
                 }
                 df = df.append(row, ignore_index=True)
-        else:
-            tag = tag.split("_batch")[0]
-            row = {
-                "start_time": job.environment["start_time_stamp"],
-                "end_time": job.environment["end_time_stamp"],
-                "job": tag.split("/")[0],
-                "schedule": tag.split("/")[0],
-                "cluster_id": job.environment["cluster_job_ids"][0]
-                if cluster
-                else "N/A",
-                "cluster_type": "cpu" if "Icebreaker" in tag else "gpu",
-                "num_mics": "N/A",
-                "useful": None,
-                "cluster_start_time": job.environment["cluster_job_start_times"][0]
-                if cluster
-                else job.environment["start_time_stamp"],
-                "image_size": image_size,
-            }
-            df = df.append(row, ignore_index=True)
 
     df.sort_values("start_time", ignore_index=True, inplace=True)
 
