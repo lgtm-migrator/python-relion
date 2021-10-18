@@ -36,8 +36,8 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
                 mic = next(micrograph_glob)
                 with mrcfile.open(mic) as mrc:
                     image_size = mrc.data.shape[:2]
-    except FileNotFoundError:
-        image_size = (None, None)
+    except StopIteration:
+        return df.DataFrame({})
 
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
@@ -47,7 +47,8 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
             tag = job.name
         cluster = bool(job.environment["cluster_job_ids"])
         if job in proj.preprocess:
-            preproc_end_times.append(job.environment["end_time_stamp"])
+            if job.environment["end_time_stamp"]:
+                preproc_end_times.append(job.environment["end_time_stamp"])
             for i, st in enumerate(job.environment["job_start_times"]):
                 cji = job.environment["cluster_job_ids"][i] if cluster else "N/A"
                 mc = (
@@ -172,6 +173,9 @@ def run() -> None:
     proj = Project(relion_dir, cluster=True)
 
     df = _get_dataframe(proj)
+
+    if df.empty:
+        return
 
     figs = []
 
