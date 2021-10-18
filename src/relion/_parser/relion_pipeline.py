@@ -331,18 +331,16 @@ class RelionPipeline:
 
     def collect_all_cluster_info(self, basepath):
         for job in self._job_nodes:
-            job.environment["cluster_job_ids"] = self._all_cluster_ids(
-                basepath / job._path / "run.out"
-            )
-            job.environment["cluster_job_start_times"] = self._cluster_start_times(
-                basepath / job._path / "run.out"
-            )
-            job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
-                basepath / job._path / "run.out"
-            )
-            job.environment["cluster_command"] = self._get_command(
-                basepath / job._path / "note.txt"
-            )
+            with open(basepath / job._path / "run.out") as log:
+                job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
+                job.environment["cluster_job_start_times"] = self._cluster_start_times(
+                    log
+                )
+                job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
+                    log
+                )
+            with open(basepath / job._path / "note.txt") as log:
+                job.environment["cluster_command"] = self._get_command(log)
             if str(job._path.parent) in [
                 "Import",
                 "MotionCorr",
@@ -368,9 +366,9 @@ class RelionPipeline:
                     basepath / "pipeline_CLASS3D.log", job._path
                 )
 
-    def _latest_cluster_id(self, log_path):
+    def _latest_cluster_id(self, log):
         try:
-            for line in reversed(list(open(log_path))):
+            for line in reversed(list(log)):
                 if "with job ID" in line:
                     cluster_id = line.split()[-1]
                     break
@@ -382,35 +380,33 @@ class RelionPipeline:
         except FileNotFoundError:
             return None
 
-    def _all_cluster_ids(self, log_path):
+    def _all_cluster_ids(self, log):
         try:
-            cluster_ids = [
-                line.split()[-1] for line in open(log_path) if "with job ID" in line
-            ]
+            cluster_ids = [line.split()[-1] for line in log if "with job ID" in line]
             if all(cid.isnumeric() for cid in cluster_ids):
                 return [int(cid) for cid in cluster_ids]
             return None
         except FileNotFoundError:
             return None
 
-    def _cluster_start_times(self, log_path):
+    def _cluster_start_times(self, log):
         try:
             t = [
                 datetime.datetime.strptime(
                     ":".join(line.split(":")[:3]), "%Y-%m-%d %H:%M:%S.%f"
                 )
-                for line in open(log_path)
+                for line in log
                 if "with job ID" in line
             ]
             return t
         except FileNotFoundError:
             return None
 
-    def _number_of_mics_run(self, log_path):
+    def _number_of_mics_run(self, log):
         try:
             job_count = 0
             mic_counts = []
-            for line in open(log_path):
+            for line in log:
                 if "with job ID" in line:
                     job_count += 1
                     mic_counts.append(0)
@@ -424,9 +420,9 @@ class RelionPipeline:
         except FileNotFoundError:
             return None
 
-    def _get_command(self, log_path):
+    def _get_command(self, log):
         try:
-            for line in open(log_path):
+            for line in open(log):
                 if "which" in line:
                     cmd = line.split()[1].replace("`", "")
                     return cmd
