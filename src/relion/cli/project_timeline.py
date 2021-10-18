@@ -43,6 +43,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
     for job in proj._job_nodes.nodes:
         if (
             job.environment["end_time_stamp"]
+            and job.environment["start_time_stamp"]
             and job.environment["end_time_stamp"] > job.environment["start_time_stamp"]
         ):
             if "External" in job.name:

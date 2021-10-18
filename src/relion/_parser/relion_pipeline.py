@@ -331,7 +331,8 @@ class RelionPipeline:
 
     def collect_all_cluster_info(self, basepath):
         for job in self._job_nodes:
-            with open(basepath / job._path / "run.out") as log:
+            with open(basepath / job._path / "run.out") as logfile:
+                log = logfile.readlines()
                 job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
                 job.environment["cluster_job_start_times"] = self._cluster_start_times(
                     log
@@ -339,7 +340,8 @@ class RelionPipeline:
                 job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
                     log
                 )
-            with open(basepath / job._path / "note.txt") as log:
+            with open(basepath / job._path / "note.txt") as logfile:
+                log = logfile.readlines()
                 job.environment["cluster_command"] = self._get_command(log)
             if str(job._path.parent) in [
                 "Import",
@@ -422,7 +424,7 @@ class RelionPipeline:
 
     def _get_command(self, log):
         try:
-            for line in open(log):
+            for line in log:
                 if "which" in line:
                     cmd = line.split()[1].replace("`", "")
                     return cmd
