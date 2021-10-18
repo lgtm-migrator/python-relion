@@ -66,7 +66,7 @@ def main():
         help="Directory for the movie time ordering External job",
     )
     parser.add_argument(
-        "--i",
+        "--in_mics",
         dest="star_mics",
         help="Input star file name from Import job",
     )

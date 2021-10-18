@@ -2372,10 +2372,24 @@ def run_pipeline(opts):
             "Import", "import_job", SETUP_CHECK_FILE, import_options
         )
 
+        order_import_options = [
+            "External executable: == time_order_movies",
+            f"Input micrographs:  == {import_job}movies.star",
+            "Param1 - label: == o",
+            "Param1 - value: == External/OrderImport",
+        ]
+        order_import_job, already_had_it = addJob(
+            "External",
+            "order_import_job",
+            SETUP_CHECK_FILE,
+            order_import_options,
+            alias="OrderImport",
+        )
+
         if opts.images_are_movies:
             #### Set up the MotionCor job
             motioncorr_options = [
-                "Input movies STAR file: == {}movies.star".format(import_job),
+                "Input movies STAR file: == {}movies.star".format(order_import_job),
                 "MOTIONCOR2 executable: == {}".format(opts.motioncor_exe),
                 "Defect file: == {}".format(opts.motioncor_defectfile),
                 "Gain-reference image: == {}".format(opts.motioncor_gainreference),
