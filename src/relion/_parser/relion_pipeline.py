@@ -366,6 +366,15 @@ class RelionPipeline:
                     )
             [t.result() for t in threads]
 
+    @staticmethod
+    def _get_log(log_path):
+        try:
+            with open(log_path) as f:
+                log = f.readlines()
+            return log
+        except FileNotFoundError:
+            return []
+
     def _single_job_all_cluster(self, job, basepath):
         with open(basepath / job._path / "run.out") as logfile:
             log = logfile.readlines()
