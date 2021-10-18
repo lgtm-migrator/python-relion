@@ -340,6 +340,7 @@ class RelionPipeline:
             for job in self._job_nodes:
                 submission = pool.submit(self._single_job_all_cluster, job, basepath)
                 threads.append(submission)
+            for job in self._job_nodes:
                 if str(job._path.parent) in [
                     "Import",
                     "MotionCorr",
