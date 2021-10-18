@@ -1,6 +1,7 @@
 import os
 import pathlib
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 from gemmi import cif
 
@@ -330,43 +331,46 @@ class RelionPipeline:
             )
 
     def collect_all_cluster_info(self, basepath):
-        for job in self._job_nodes:
-            with open(basepath / job._path / "run.out") as logfile:
-                log = logfile.readlines()
-                job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
-                job.environment["cluster_job_start_times"] = self._cluster_start_times(
-                    log
-                )
-                job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
-                    log
-                )
-            with open(basepath / job._path / "note.txt") as logfile:
-                log = logfile.readlines()
-                job.environment["cluster_command"] = self._get_command(log)
-            if str(job._path.parent) in [
-                "Import",
-                "MotionCorr",
-                "CtfFind",
-                "External",
-                "AutoPick",
-                "Select",
-                "Extract",
-            ]:
-                job.environment["job_start_times"] = self._get_job_times(
-                    basepath / "pipeline_PREPROCESS.log", job._path
-                )
-            elif str(job._path.parent) == "Class2D":
-                job.environment["job_start_times"] = self._get_job_times(
-                    basepath / "pipeline_CLASS2D.log", job._path
-                )
-            elif str(job._path.parent) == "InitialModel":
-                job.environment["job_start_times"] = self._get_job_times(
-                    basepath / "pipeline_INIMODEL.log", job._path
-                )
-            elif str(job._path.parent) == "Class3D":
-                job.environment["job_start_times"] = self._get_job_times(
-                    basepath / "pipeline_CLASS3D.log", job._path
-                )
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            threads = []
+            for job in self._job_nodes:
+                submission = pool.submit(self._single_job_all_cluster, job, basepath)
+                threads.append(submission)
+            [t.result() for t in threads]
+
+    def _single_job_all_cluster(self, job, basepath):
+        with open(basepath / job._path / "run.out") as logfile:
+            log = logfile.readlines()
+            job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
+            job.environment["cluster_job_start_times"] = self._cluster_start_times(log)
+            job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(log)
+        with open(basepath / job._path / "note.txt") as logfile:
+            log = logfile.readlines()
+            job.environment["cluster_command"] = self._get_command(log)
+        if str(job._path.parent) in [
+            "Import",
+            "MotionCorr",
+            "CtfFind",
+            "External",
+            "AutoPick",
+            "Select",
+            "Extract",
+        ]:
+            job.environment["job_start_times"] = self._get_job_times(
+                basepath / "pipeline_PREPROCESS.log", job._path
+            )
+        elif str(job._path.parent) == "Class2D":
+            job.environment["job_start_times"] = self._get_job_times(
+                basepath / "pipeline_CLASS2D.log", job._path
+            )
+        elif str(job._path.parent) == "InitialModel":
+            job.environment["job_start_times"] = self._get_job_times(
+                basepath / "pipeline_INIMODEL.log", job._path
+            )
+        elif str(job._path.parent) == "Class3D":
+            job.environment["job_start_times"] = self._get_job_times(
+                basepath / "pipeline_CLASS3D.log", job._path
+            )
 
     def _latest_cluster_id(self, log):
         try:
