@@ -109,6 +109,9 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
     for i, l in enumerate(preproc_locs[:-1]):
         df.loc[l, "end_time"] = df.loc[preproc_locs[i + 1], "start_time"]
 
+    if not preproc_end_times:
+        return pd.DataFrame({})
+
     df.loc[preproc_locs[-1], "end_time"] = max(preproc_end_times)
     df["end_time"] = pd.to_datetime(df["end_time"])
 
