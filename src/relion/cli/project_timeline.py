@@ -37,7 +37,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
                 with mrcfile.open(mic) as mrc:
                     image_size = mrc.data.shape[:2]
     except StopIteration:
-        return df.DataFrame({})
+        return pd.DataFrame({})
 
     preproc_end_times = []
     for job in proj._job_nodes.nodes:
