@@ -47,9 +47,17 @@ def run_job(project_dir, out_dir, in_mics_file, args_list):
     out_star = gemmi.cif.Document()
     optics_block = out_star.add_new_block("optics")
     optics_loop_list = list(data_as_dict["optics"].keys())
-    loop = optics_block.init_loop("", optics_loop_list)
-    for i in range(data_as_dict["optics"]["_rlnopticsgroupname"]):
-        loop.add_row([data_as_dict["optics"][k][i] for k in optics_loop_list])
+    optics_columns = {
+        "_rlnopticsgroupname": "_rlnOpticsGroupName",
+        "_rlnopticsgroup": "_rlnOpticsGroup",
+        "_rlnmicrographoriginalpixelsize": "_rlnMicrographOriginalPixelSize",
+        "_rlnvoltage": "_rlnVoltage",
+        "_rlnsphericalaberration": "_rlnSphericalAberration",
+        "_rlnamplitudecontrast": "_rlnAmplitudeContrast",
+    }
+    loop = optics_block.init_loop("", [optics_columns[k] for k in optics_loop_list])
+    for i in range(len(data_as_dict["optics"]["_rlnopticsgroupname"])):
+        loop.add_row([str(data_as_dict["optics"][k][i]) for k in optics_loop_list])
     data_movies_block = out_star.add_new_block("movies")
     loop = data_movies_block.init_loop(
         "", ["_rlnMicrographMovieName", "_rlnOpticsGroup"]
