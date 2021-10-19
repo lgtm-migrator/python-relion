@@ -1,6 +1,7 @@
-from sqlalchemy import TIMESTAMP, Column, String
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, String
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -63,11 +64,7 @@ class RelionJobInfo(Base):
     __tablename__ = "RelionJobInfo"
 
     job_id = Column(INTEGER(10), primary_key=True)
-    cluster_id = Column(
-        INTEGER(10),
-        comment="ID of the cluster job",
-        autoincrement=False,
-    )
+    cluster_id = Column(ForeignKey("ClusterJobInfo.cluster_id"))
     relion_start_time = Column(
         TIMESTAMP,
         comment="Start time of Relion job",
@@ -82,6 +79,8 @@ class RelionJobInfo(Base):
         nullable=False,
         comment="Name of Relion job",
     )
+
+    ClusterJobInfo = relationship("ClusterJobInfo")
 
 
 def buffer_url() -> str:
