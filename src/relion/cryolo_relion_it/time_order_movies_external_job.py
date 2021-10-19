@@ -42,6 +42,7 @@ def run_job(project_dir, out_dir, in_mics_file, args_list):
     time_ordered = sorted(
         [d for d in data if d[0] not in known_mics],
         key=lambda p: (proj_dir / p[0]).stat().st_ctime,
+        reverse=True,
     )
     all_mics = time_ordered + [(d1, d2) for d1, d2 in zip(known_mics, known_mics_og)]
     out_star = gemmi.cif.Document()
