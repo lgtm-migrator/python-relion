@@ -2373,7 +2373,7 @@ def run_pipeline(opts):
         )
 
         order_import_options = [
-            "External executable: == time_order_movies",
+            "External executable: == external_job_order_import",
             f"Input micrographs:  == {import_job}movies.star",
             "Param1 - label: == o",
             "Param1 - value: == External/OrderImport",
@@ -2551,7 +2551,7 @@ def run_pipeline(opts):
             "CtfFind", "ctffind_job", SETUP_CHECK_FILE, ctffind_options
         )
 
-        runjobs = [import_job]
+        runjobs = [import_job, order_import_job]
         if opts.images_are_movies:
             runjobs.append(motioncorr_job)
         if opts.do_icebreaker_job_group:
