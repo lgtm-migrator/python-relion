@@ -23,11 +23,12 @@ def run_job(project_dir, out_dir, in_mics_file, args_list):
 
     in_mics = gemmi.cif.read_file(os.path.join(project_dir, in_mics_file))
     proj_dir = pathlib.Path(project_dir)
-    data_as_dict = json.loads(in_mics.as_json())["movies"]
+    data_as_dict = json.loads(in_mics.as_json())  # ["movies"]
     data = [
         (d1, d2)
         for d1, d2 in zip(
-            data_as_dict["_rlnmicrographmoviename"], data_as_dict["_rlnopticsgroup"]
+            data_as_dict["movies"]["_rlnmicrographmoviename"],
+            data_as_dict["movies"]["_rlnopticsgroup"],
         )
     ]
     if (proj_dir / "movies.star").is_file():
@@ -44,6 +45,11 @@ def run_job(project_dir, out_dir, in_mics_file, args_list):
     )
     all_mics = time_ordered + [(d1, d2) for d1, d2 in zip(known_mics, known_mics_og)]
     out_star = gemmi.cif.Document()
+    optics_block = out_star.add_new_block("optics")
+    optics_loop_list = list(data_as_dict["optics"].keys())
+    loop = optics_block.init_loop("", optics_loop_list)
+    for i in range(data_as_dict["optics"]["_rlnopticsgroupname"]):
+        loop.add_row([data_as_dict["optics"][k][i] for k in optics_loop_list])
     data_movies_block = out_star.add_new_block("movies")
     loop = data_movies_block.init_loop(
         "", ["_rlnMicrographMovieName", "_rlnOpticsGroup"]
