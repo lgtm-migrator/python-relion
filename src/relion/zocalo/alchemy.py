@@ -1,6 +1,7 @@
-from sqlalchemy import TIMESTAMP, Column, String
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, String
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -25,6 +26,32 @@ class ZocaloBuffer(Base):
     Reference = Column(
         INTEGER(10),
         comment="Context-dependent reference to primary key IDs in other ISPyB tables",
+    )
+
+
+class RelionPipelineInfo(Base):
+    __tablename__ = "RelionPipelineInfo"
+
+    pipeline_id = Column(INTEGER(10), primary_key=True)
+    image_x = Column(
+        INTEGER(5),
+        comment="Number of pixels in the x direction",
+        autoincrement=False,
+    )
+    image_y = Column(
+        INTEGER(5),
+        comment="Number of pixels in the y direction",
+        autoincrement=False,
+    )
+    microscope = Column(
+        String(10),
+        nullable=False,
+        comment="Microscope name",
+    )
+    project_path = Column(
+        String(250),
+        nullable=False,
+        comment="Path to the project directory",
     )
 
 
@@ -82,16 +109,8 @@ class RelionJobInfo(Base):
         nullable=False,
         comment="Name of Relion job",
     )
-    image_x = Column(
-        INTEGER(5),
-        comment="Number of pixels in the x direction",
-        autoincrement=False,
-    )
-    image_y = Column(
-        INTEGER(5),
-        comment="Number of pixels in the y direction",
-        autoincrement=False,
-    )
+    pipeline_id = Column(ForeignKey("RelionPipelineInfo.pipeline_id"), index=True)
+    RelionPipelineInfo = relationship("RelionPipelineInfo")
 
 
 def buffer_url() -> str:
