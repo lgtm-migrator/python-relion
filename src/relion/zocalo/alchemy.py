@@ -82,6 +82,16 @@ class RelionJobInfo(Base):
         nullable=False,
         comment="Name of Relion job",
     )
+    image_x = Column(
+        INTEGER(5),
+        comment="Number of pixels in the x direction",
+        autoincrement=False,
+    )
+    image_y = Column(
+        INTEGER(5),
+        comment="Number of pixels in the y direction",
+        autoincrement=False,
+    )
 
 
 def buffer_url() -> str:
