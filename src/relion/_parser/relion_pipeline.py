@@ -174,17 +174,17 @@ class RelionPipeline:
                 pass
             try:
                 node.environment["end_time_stamp"] = datetime.datetime.fromtimestamp(
-                    aborted.stat().st_mtime
+                    success.stat().st_mtime
                 )
-                node.environment["status"] = False
+                node.environment["status"] = True
                 continue
             except FileNotFoundError:
                 pass
             try:
                 node.environment["end_time_stamp"] = datetime.datetime.fromtimestamp(
-                    success.stat().st_mtime
+                    aborted.stat().st_mtime
                 )
-                node.environment["status"] = True
+                node.environment["status"] = False
                 continue
             except FileNotFoundError:
                 pass
@@ -528,7 +528,7 @@ class RelionPipeline:
                             minute=int(time_split[1]),
                             second=int(time_split[2]),
                         )
-                        if time is None or dtime < time:
+                        if time is None or dtime > time:
                             time = dtime
                         jobcount += 1
         return time, jobcount
