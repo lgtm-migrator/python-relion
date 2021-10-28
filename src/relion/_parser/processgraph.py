@@ -47,13 +47,6 @@ class ProcessGraph(Graph):
                 return self._node_list[i]
         return None
 
-    def extend(self, other):
-        if not isinstance(other, ProcessGraph):
-            raise ValueError("Can only extend a ProcessGraph with another ProcessGraph")
-        self._node_list.extend(other._node_list)
-        self.remove_node(other._start_node)
-        self.remove_node(other._end_node)
-
     def index(self, node):
         return self._node_list.index(node)
 
@@ -66,7 +59,7 @@ class ProcessGraph(Graph):
             raise ValueError(
                 f"ProcessGraph.node_explore must be called with a ProcessNode (not {type(node)}: {node}) as the starting point; a string or similar is insufficient"
             )
-        if node not in explored:
+        if node not in explored and node not in (self._start_node, self._end_node):
             explored.append(node)
         for next_node in node:
             self.node_explore(next_node, explored)
@@ -81,13 +74,14 @@ class ProcessGraph(Graph):
         node_names = [p._path for p in self]
         other_names = [p._path for p in other]
         if len(set(node_names).intersection(set(other_names))) > 0:
-            for new_node in other:
+            for new_node in other._top_and_tail():
                 if new_node._path not in self:
                     self.add_node(new_node)
                 else:
                     for next_node in new_node:
                         if next_node._path not in self[self.index(new_node._path)]:
                             self[self.index(new_node._path)].link_to(next_node)
+                [self._start_node.link_to(o) for o in other.origins]
             return True
         else:
             return False
@@ -96,10 +90,10 @@ class ProcessGraph(Graph):
         if len(self._node_list) == 2:  # 0:
             return []
         connected_graphs = []
-        print("exploring")
+        print("exploring", self.find_origins(verbose=False), self)
         for oi, origin in enumerate(self.find_origins()):
             curr_graph = []
-            print("origin", origin)
+            # print("origin", origin)
             self.node_explore(origin, curr_graph)
             connected_graphs.append(
                 ProcessGraph(f"{self.name}:Connected:{oi}", curr_graph)

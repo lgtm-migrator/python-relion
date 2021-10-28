@@ -59,17 +59,20 @@ def no_link_graph(_next_node_01, _next_node_02):
 
 def test_process_graph_equality(graph, no_link_graph):
     assert not graph == no_link_graph
-    no_link_graph._node_list[0].link_to(no_link_graph._node_list[1])
-    no_link_graph._node_list[0].link_to(no_link_graph._node_list[2])
+    no_link_graph._node_list[1].link_to(no_link_graph._node_list[2])
+    no_link_graph._node_list[1].link_to(no_link_graph._node_list[3])
+    no_link_graph._node_list[1].unlink_from(no_link_graph._end_node)
+    no_link_graph._start_node.unlink_from(no_link_graph._node_list[2])
+    no_link_graph._start_node.unlink_from(no_link_graph._node_list[3])
     assert graph == no_link_graph
 
 
 def test_process_graph_length(graph):
-    assert len(graph) == 3
+    assert len(graph) == 5
 
 
 def test_process_graph_access_to_elements_via_index(graph, _next_node_01):
-    assert graph[1] == _next_node_01
+    assert graph[2] == _next_node_01
 
 
 def test_process_graph_extend_behaves_like_a_list_extend(graph):
@@ -82,8 +85,8 @@ def test_process_graph_extend_behaves_like_a_list_extend(graph):
 
 
 def test_process_graph_can_get_the_index_of_a_provided_element(graph, _next_node_01):
-    assert graph.index(_next_node_01) == 1
-    assert graph.index(Node("B")) == 1
+    assert graph.index(_next_node_01) == 2
+    assert graph.index(Node("B")) == 2
 
 
 def test_process_graph_node_explore_collects_all_nodes_from_provided_node_onwards(
@@ -104,9 +107,11 @@ def test_process_graph_add_node(graph, _node_with_links, _next_node_01, _next_no
     new_node = Node("D")
     graph.add_node(new_node)
     assert graph._node_list == [
+        graph._start_node,
         _node_with_links,
         _next_node_01,
         _next_node_02,
+        graph._end_node,
         new_node,
     ]
 
@@ -115,9 +120,14 @@ def test_process_graph_remove_node_without_any_links(
     graph, _node_with_links, _next_node_01, _next_node_02
 ):
     graph.remove_node(_next_node_01)
-    assert graph.nodes == [_node_with_links, _next_node_02]
+    assert graph.nodes == [
+        graph._start_node,
+        _node_with_links,
+        _next_node_02,
+        graph._end_node,
+    ]
     graph.remove_node(_next_node_02)
-    assert graph.nodes == [_node_with_links]
+    assert graph.nodes == [graph._start_node, _node_with_links, graph._end_node]
 
 
 def test_process_graph_link_from_to_does_the_linking_correctly(
@@ -139,7 +149,7 @@ def test_process_graph_remove_node_and_check_links_still_work(
     last_node = Node("D")
     new_graph.link_from_to(_next_node_01, last_node)
     new_graph.add_node(last_node)
-    assert list(list(new_graph[0])[0])[0] == last_node
+    assert list(list(new_graph[0])[0])[1] == last_node
     new_graph.remove_node(new_graph[1])
     assert new_graph.nodes == [node, _next_node_02, last_node]
     assert list(new_graph[0])[1] == last_node

@@ -91,24 +91,32 @@ class DBModel(collections.abc.Mapping):
         )
 
         self.class_group_db_node = DBNode(
-            "ClassificationGroupTable",
+            "ClassificationGroupTable2D",
             [ParticleClassificationGroupTable()],
         )
         self.class_db_node = DBNode(
-            "ClassificationTable",
+            "ClassificationTable2D",
             [ParticleClassificationTable()],
         )
-        self.parpick_db_node.link_to(
-            self.class_group_db_node,
-            traffic={
-                "check_for": "parpick_job_string",
-                "check_for_foreign_name": "job_string",
-                "foreign_key": "particle_picker_id",
-                "table_key": "particle_picker_id",
-                "first": True,
-                "foreign_table": self.parpick_db_node.tables[0],
-            },
+        self.class_group_db_node_02 = DBNode(
+            "ClassificationGroupTable3D",
+            [ParticleClassificationGroupTable()],
         )
+        self.class_db_node_02 = DBNode(
+            "ClassificationTable3D",
+            [ParticleClassificationTable()],
+        )
+        # self.parpick_db_node.link_to(
+        #    self.class_group_db_node,
+        #    traffic={
+        #        "check_for": "parpick_job_string",
+        #        "check_for_foreign_name": "job_string",
+        #        "foreign_key": "particle_picker_id",
+        #        "table_key": "particle_picker_id",
+        #        "first": True,
+        #        "foreign_table": self.parpick_db_node.tables[0],
+        #    },
+        # )
         self.class_group_db_node.link_to(
             self.class_db_node,
             traffic={
@@ -124,28 +132,60 @@ class DBModel(collections.abc.Mapping):
             auto_connect=True,
         )
 
+        self.class_group_db_node_02.link_to(
+            self.class_db_node_02,
+            traffic={
+                "check_for": "job_string",
+                "foreign_key": "particle_classification_group_id",
+                "table_key": "particle_classification_group_id",
+                "foreign_table": self.class_group_db_node_02.tables[0],
+            },
+        )
+
         self.ini_model_db_node = DBNode(
             "InitialModelTable",
             [CryoemInitialModelTable()],
         )
-        self.class_db_node.link_to(
+        self.class_db_node_02.link_to(
             self.ini_model_db_node,
             traffic={
                 "check_for": "job_string",
                 "foreign_key": "particle_classification_id",
                 "table_key": "particle_classification_id",
-                "foreign_table": self.class_db_node.tables[0],
+                "foreign_table": self.class_db_node_02.tables[0],
                 "first": False,
             },
         )
         self.class3d_db_node = DBGraph(
             "3DClassificationTables",
             [
-                self.class_group_db_node,
-                self.class_db_node,
+                self.class_group_db_node_02,
+                self.class_db_node_02,
                 self.ini_model_db_node,
             ],
             auto_connect=True,
+        )
+        self.parpick_db_node.link_to(
+            self.class2d_db_node,
+            traffic={
+                "check_for": "parpick_job_string",
+                "check_for_foreign_name": "job_string",
+                "foreign_key": "particle_picker_id",
+                "table_key": "particle_picker_id",
+                "first": True,
+                "foreign_table": self.parpick_db_node.tables[0],
+            },
+        )
+        self.parpick_db_node.link_to(
+            self.class3d_db_node,
+            traffic={
+                "check_for": "parpick_job_string",
+                "check_for_foreign_name": "job_string",
+                "foreign_key": "particle_picker_id",
+                "table_key": "particle_picker_id",
+                "first": True,
+                "foreign_table": self.parpick_db_node.tables[0],
+            },
         )
 
         db_dict = {

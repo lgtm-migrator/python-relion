@@ -216,12 +216,17 @@ class Project(RelionPipeline):
         self.collect_job_times(
             list(self.schedule_files), self.basepath / "pipeline_PREPROCESS.log"
         )
-        print("should be nodes")
-        print(self._nodes.nodes)
-        for jobnode in self:
-            if self._results_dict.get(
-                jobnode.name
-            ) or "crYOLO" in jobnode.environment.get("alias"):
+        # print("should be nodes")
+        # print(self._nodes.nodes)
+        for (
+            jobnode
+        ) in (
+            self.stripped
+        ):  # [n for n in self if n not in (self._jobtype_nodes._start_node, self._jobtype_nodes._end_node)]:
+            if (
+                self._results_dict.get(jobnode.name)
+                or jobnode.environment.get("alias") in self._results_dict
+            ):
                 if jobnode.name == "InitialModel":
                     self._update_pipeline(
                         jobnode,
@@ -249,8 +254,10 @@ class Project(RelionPipeline):
             else:
                 # print("adding job node", jobnode, jobnode.name, jobnode._out, jobnode.nodeid)
                 self._data_pipeline.add_node(jobnode)
-                if jobnode.name == "Import":
-                    self._data_pipeline.origins = [jobnode]
+                # if jobnode.name == "Import":
+                # self._data_pipeline.origins = [jobnode]
+        print("loaded")
+        self._data_pipeline.origins = [self._data_pipeline._start_node]
 
     def _update_pipeline(self, jobnode, label, prop=None, in_db_model=True):
         jobnode.environment["result"] = self._results_dict[label]
@@ -268,7 +275,7 @@ class Project(RelionPipeline):
             share=[("end_time_stamp", "end_time")],
         )
         # print("adding job node", jobnode, jobnode.name, jobnode._out, jobnode.nodeid)
-        print("will be adding node", jobnode)
+        # print("will be adding node", jobnode)
         self._data_pipeline.add_node(jobnode)
         if in_db_model:
             self._data_pipeline.add_node(self._db_model[label])

@@ -41,6 +41,7 @@ class DBNode(Node):
         return False
 
     def func(self, *args, **kwargs):
+        # print("calling", self, self.nodeid)
         if self.environment.empty:
             return []
         extra_options = self.environment["extra_options"]

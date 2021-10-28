@@ -161,8 +161,10 @@ class Node:
         if next_node in self._out:
             if use_name:
                 self._out = [p for p in self._out if p.name != next_node.name]
+                next_node._in = [p for p in next_node._in if p.name != self.name]
             else:
                 self._out.remove(next_node)
+                next_node._in.remove(self)
             # self._out.remove(next_node)
 
     def _is_child_checker(self, possible_child, checks):

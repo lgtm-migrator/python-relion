@@ -39,6 +39,12 @@ class RelionPipeline:
     def _plock(self):
         return DummyLock()
 
+    @property
+    def stripped(self):
+        if not self._jobs_collapsed:
+            self._collapse_jobs_to_jobtypes()
+        return self._jobtype_nodes.strip()
+
     def _star_doc(self, star_path):
         gemmi_readable_path = os.fspath(star_path)
         if star_path in self.locklist:
@@ -153,10 +159,16 @@ class RelionPipeline:
                 self._nodes[self._nodes.index(f._path)].propagate(
                     ("init_model_class_num", "init_model_class_num")
                 )
-        print(self._nodes)
+        [self._nodes._start_node.link_to(o) for o in self._nodes.find_origins()]
+        [
+            n.link_to(self._nodes._end_node)
+            for n in self._nodes._node_list
+            if not n._out and n != self._nodes._end_node
+        ]
+        # print(self._nodes)
         # print(self._nodes.nodes)
-        self._nodes._split_connected(self._connected, self.origin, self.origins)
-        print("split")
+        # self._nodes._split_connected(self._connected, self.origin, self.origins)
+        # print("split")
         self._set_job_nodes(star_doc_from_path)
 
     def check_job_node_statuses(self, basepath):
@@ -195,40 +207,50 @@ class RelionPipeline:
 
     def _set_job_nodes(self, star_doc):
         self._job_nodes = copy.deepcopy(self._nodes)
+        # print("before any removal", self._job_nodes._node_list, self._job_nodes._node_list[0]._out, self._job_nodes._node_list[1]._in, self._job_nodes._node_list[2]._out, self._job_nodes._node_list[2]._in)
         file_nodes = self._load_file_nodes_from_star(star_doc)
         for fnode in file_nodes:
-            if str(
-                fnode._path.parent.parent
-            ) == "Select" and fnode._path.name.startswith("particles_split"):
-                self._job_nodes.remove_node(fnode._path, advance=True)
-            else:
-                self._job_nodes.remove_node(fnode._path)
-        self._job_nodes._split_connected(
-            self._connected_jobs, self.origin, self.job_origins
-        )
+            if fnode not in (file_nodes._start_node, file_nodes._end_node):
+                if str(
+                    fnode._path.parent.parent
+                ) == "Select" and fnode._path.name.startswith("particles_split"):
+                    self._job_nodes.remove_node(fnode._path, advance=True)
+                else:
+                    self._job_nodes.remove_node(fnode._path)
+        # print("before splitting", self._job_nodes._node_list, self._job_nodes._node_list[0]._out, self._job_nodes._node_list[1]._in, self._job_nodes._node_list[2]._out, self._job_nodes._node_list[2]._in)
+        # self._job_nodes._split_connected(
+        #    self._connected_jobs, self.origin, self.job_origins
+        # )
 
     def _collapse_jobs_to_jobtypes(self):
         ordered_graph = []
         if len(self._nodes) == 0:
             self._jobtype_nodes = ProcessGraph("job type nodes", [])
             return
-        self._job_nodes.node_explore(
-            self._job_nodes[self._job_nodes.index(self.origin)], ordered_graph
+        stripped_job_graph = self._job_nodes.strip()
+        stripped_job_graph.node_explore(
+            stripped_job_graph[stripped_job_graph.index(self.origin)], ordered_graph
         )
+        # print("ordered graph", ordered_graph)
         self._jobtype_nodes = ProcessGraph(
-            "job type nodes", copy.deepcopy(ordered_graph)
+            "job type nodes", ordered_graph  # copy.deepcopy(ordered_graph)
         )
+        # print("collapsing", self._jobtype_nodes._node_list)
         for node in self._jobtype_nodes:
-            node.environment["job"] = node._path.name
-            job_string = str(node._path.name)
-            node._path = node._path.parent
-            for inode in node._in:
-                inode._link_traffic[node.nodeid] = inode._link_traffic[node.nodeid]
-            node._name = str(node._path)
-            if node.name == "InitialModel":
-                node.environment["ini_model_job_string"] = job_string
-            else:
-                node.environment["job_string"] = job_string
+            if node not in (
+                self._jobtype_nodes._start_node,
+                self._jobtype_nodes._end_node,
+            ):
+                node.environment["job"] = node._path.name
+                job_string = str(node._path.name)
+                node._path = node._path.parent
+                for inode in node._in:
+                    inode._link_traffic[node.nodeid] = inode._link_traffic[node.nodeid]
+                node._name = str(node._path)
+                if node.name == "InitialModel":
+                    node.environment["ini_model_job_string"] = job_string
+                else:
+                    node.environment["job_string"] = job_string
         self._jobs_collapsed = True
 
     def show_all_nodes(self):
