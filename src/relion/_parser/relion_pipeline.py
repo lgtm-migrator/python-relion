@@ -390,14 +390,23 @@ class RelionPipeline:
             return []
 
     def _single_job_all_cluster(self, job, basepath):
-        with open(basepath / job._path / "run.out") as logfile:
-            log = logfile.readlines()
-            job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
-            job.environment["cluster_job_start_times"] = self._cluster_start_times(log)
-            job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(log)
-        with open(basepath / job._path / "note.txt") as logfile:
-            log = logfile.readlines()
-            job.environment["cluster_command"] = self._get_command(log)
+        try:
+            with open(basepath / job._path / "run.out") as logfile:
+                log = logfile.readlines()
+                job.environment["cluster_job_ids"] = self._all_cluster_ids(log)
+                job.environment["cluster_job_start_times"] = self._cluster_start_times(
+                    log
+                )
+                job.environment["cluster_job_mic_counts"] = self._number_of_mics_run(
+                    log
+                )
+            with open(basepath / job._path / "note.txt") as logfile:
+                log = logfile.readlines()
+                job.environment["cluster_command"] = self._get_command(log)
+        except FileNotFoundError:
+            job.environment["cluster_job_ids"] = []
+            job.environment["cluster_job_start_times"] = []
+            job.environment["cluster_job_mic_counts"] = []
 
     def _latest_cluster_id(self, log):
         try:
