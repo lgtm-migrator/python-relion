@@ -54,7 +54,12 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
             if job in proj.preprocess:
                 preproc_end_times.append(job.environment["end_time_stamp"])
                 for i, st in enumerate(job.environment["job_start_times"]):
-                    cji = job.environment["cluster_job_ids"][i] if cluster else "N/A"
+                    try:
+                        cji = (
+                            job.environment["cluster_job_ids"][i] if cluster else "N/A"
+                        )
+                    except IndexError:
+                        continue
                     mc = (
                         job.environment["cluster_job_mic_counts"][i]
                         if cluster and not ("Extract" in tag or "Icebreaker" in tag)

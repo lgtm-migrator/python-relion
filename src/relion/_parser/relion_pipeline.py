@@ -379,6 +379,20 @@ class RelionPipeline:
                         ib_group_log, job._path
                     )
             [t.result() for t in threads]
+            for job in self._job_nodes:
+                if (
+                    str(job._path.parent) == "External"
+                    and "Icebreaker" in job.environment["alias"]
+                ):
+                    if (
+                        job.environment["cluster_job_ids"]
+                        and job._in[0].environment["cluster_job_mic_counts"] is not None
+                    ):
+                        job.environment["cluster_job_mic_counts"] = job._in[
+                            0
+                        ].environment["cluster_job_mic_counts"][
+                            : len(job.environment["cluster_job_ids"])
+                        ]
 
     @staticmethod
     def _get_log(log_path):
@@ -433,13 +447,17 @@ class RelionPipeline:
 
     def _cluster_start_times(self, log):
         try:
-            t = [
-                datetime.datetime.strptime(
-                    ":".join(line.split(":")[:3]), "%Y-%m-%d %H:%M:%S.%f"
-                )
-                for line in log
-                if "with job ID" in line
-            ]
+            t = []
+            for line in log:
+                if "with job ID" in line:
+                    time_string = ":".join(line.split(":")[:3])
+                    time_string = time_string.split(".")[-2]
+                    for c in ("~", ",", "_", '"', ">", "(", ")", "[", "o", "]"):
+                        time_string = time_string.replace(c, "")
+                    time_string = " ".join(time_string.split(" ")[-2:])
+                    t.append(
+                        datetime.datetime.strptime(time_string, "%Y-%m-%d %H:%M:%S")
+                    )
             return t
         except FileNotFoundError:
             return None
