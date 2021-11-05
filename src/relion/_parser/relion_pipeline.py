@@ -335,21 +335,27 @@ class RelionPipeline:
         class2d_log = self._get_log(basepath / "pipeline_CLASS2D.log")
         inimodel_log = self._get_log(basepath / "pipeline_INIMODEL.log")
         class3d_log = self._get_log(basepath / "pipeline_CLASS3D.log")
+        ib_group_log = self._get_log(basepath / "pipeline_ICEBREAKER_GROUP.log")
         with ThreadPoolExecutor(max_workers=10) as pool:
             threads = []
             for job in self._job_nodes:
                 submission = pool.submit(self._single_job_all_cluster, job, basepath)
                 threads.append(submission)
             for job in self._job_nodes:
-                if str(job._path.parent) in [
-                    "Import",
-                    "MotionCorr",
-                    "CtfFind",
-                    "External",
-                    "AutoPick",
-                    "Select",
-                    "Extract",
-                ]:
+                if (
+                    str(job._path.parent)
+                    in [
+                        "Import",
+                        "MotionCorr",
+                        "CtfFind",
+                        "External",
+                        "AutoPick",
+                        "Select",
+                        "Extract",
+                    ]
+                    and job.environment["alias"]
+                    and "Icebreaker_group" not in job.environment["alias"]
+                ):
                     job.environment["job_start_times"] = self._get_job_times(
                         preproc_log, job._path
                     )
@@ -364,6 +370,13 @@ class RelionPipeline:
                 elif str(job._path.parent) == "Class3D":
                     job.environment["job_start_times"] = self._get_job_times(
                         class3d_log, job._path
+                    )
+                elif (
+                    job.environment["alias"]
+                    and "Icebreaker_group" in job.environment["alias"]
+                ):
+                    job.environment["job_start_times"] = self._get_job_times(
+                        ib_group_log, job._path
                     )
             [t.result() for t in threads]
 

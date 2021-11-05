@@ -96,7 +96,7 @@ def _get_dataframe(proj: Project) -> pd.DataFrame:
                     "cluster_type": "cpu" if "Icebreaker" in tag else "gpu",
                     "num_mics": "N/A",
                     "useful": None,
-                    "cluster_start_time": job.environment["cluster_job_start_times"][0]
+                    "cluster_start_time": job.environment["cluster_job_start_times"][-1]
                     if cluster
                     else job.environment["start_time_stamp"],
                     "image_size": image_size,
