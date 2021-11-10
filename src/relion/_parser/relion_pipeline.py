@@ -449,6 +449,9 @@ class RelionPipeline:
         try:
             t = []
             for line in log:
+                # all of this is annoying stuff to deal with Relion writing its progress bar
+                # while the cluster info we're interested in is written on the same line of the
+                # output log
                 if "with job ID" in line:
                     time_string = ":".join(line.split(":")[:3])
                     time_string = time_string.split(".")[-2]
