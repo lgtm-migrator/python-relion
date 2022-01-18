@@ -120,7 +120,7 @@ def generate_pipeline_options(
         "nr_mpi": 1,
     }
 
-    job_options["relion.class2d"] = {
+    job_options["relion.class2d.em"] = {
         "nr_classes": relion_it_options.class2d_nr_classes,
         "do_em": "Yes",
         "do_grad": "No",
