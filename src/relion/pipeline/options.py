@@ -7,7 +7,7 @@ def generate_pipeline_options(
     relion_it_options: RelionItOptions, job_types: List[Dict[str, str]]
 ) -> dict:
     for queue in job_types.values():
-        if queue not in ("gpu", "cpu", ""):
+        if queue not in ("gpu", "cpu", "gpu-smp", ""):
             raise ValueError(
                 f'The queue for a job must be either gpu, cpu or "", not {queue}'
             )
@@ -16,11 +16,20 @@ def generate_pipeline_options(
         "do_queue": "Yes",
         "qsubscript": relion_it_options.queue_submission_template,
     }
+    queue_options_gpu_smp = {
+        "do_queue": "Yes",
+        "qsubscript": relion_it_options.queue_submission_template_smp,
+    }
     queue_options_cpu = {
         "do_queue": "Yes",
         "qsubscript": relion_it_options.queue_submission_template_cpu_smp,
     }
-    queue_options = {"gpu": queue_options_gpu, "cpu": queue_options_cpu, "": {}}
+    queue_options = {
+        "gpu": queue_options_gpu,
+        "cpu": queue_options_cpu,
+        "gpu-smp": queue_options_gpu_smp,
+        "": {},
+    }
 
     job_options = {}
 
