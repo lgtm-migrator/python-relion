@@ -169,6 +169,7 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
             images_particles_command_list = []
 
             if pathlib.Path(self.params["stop_file"]).is_file():
+                logger.info("Stop file encountered")
                 relion_prj.load()
                 for job_path in relion_prj._job_nodes:
                     (
@@ -178,6 +179,8 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
                     ).touch()
                 for p in self.results_directory.glob("RUNNING_*"):
                     p.unlink()
+                logger.info("Instructed Relion to stop. Terminating main loop.")
+                break
 
             relion_prj.load()
 
@@ -349,6 +352,12 @@ class RelionWrapper(zocalo.wrapper.BaseWrapper):
 
         if all_process_check.is_file():
             all_process_check.unlink()
+        else:
+            # if the running file is not there it was removed for a failure reason
+            logger.warning(
+                "Preprocessing exited unexpectedly. Relion wrapper returning failure status"
+            )
+            success = False
 
         return success
 

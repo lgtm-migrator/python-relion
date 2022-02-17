@@ -767,7 +767,7 @@ class RelionItOptions(object):
     #### Icebreaker
     do_icebreaker_job_group = True
     do_icebreaker_job_flatten = True
-    do_icebreaker_fivefig = False
+    do_icebreaker_fivefig = True
     do_icebreaker_group = True
     icebreaker_threads_number = 10
 
@@ -1993,7 +1993,8 @@ def RunJobs(jobs, repeat, wait, schedulename):
         runjobsstring,
     ]
     # Popen rather than run because we want to run the process in the background
-    subprocess.Popen(command)
+    popen = subprocess.Popen(command)
+    return popen
 
 
 def WaitForJob(wait_for_this_job, seconds_wait):
@@ -2581,6 +2582,8 @@ def run_pipeline(opts):
                     f"Param4 - value: == {opts.cryolo_config}",
                     "Param5 - label: == gpu",
                     f'Param5 - value: == "{opts.cryolo_pick_gpus}"',
+                    "Param6 - label: == from_movies",
+                    f"Param6 - value: == {1 if opts.images_are_movies else 0}",
                 ]
 
                 # TODO: fix fine tune for running as External job
@@ -2809,7 +2812,7 @@ def run_pipeline(opts):
         else:
             preprocess_schedule_name = PREPROCESS_SCHEDULE_PASS2
 
-        RunJobs(
+        preproc = RunJobs(
             runjobs,
             opts.preprocess_repeat_times,
             opts.preprocess_repeat_wait,
@@ -3601,6 +3604,12 @@ def run_pipeline(opts):
                                 break
 
                 if not have_new_batch:
+                    # if there isn't a new batch then check if the preprocessing is still running
+                    preprocstatus = preproc.poll()
+                    if preprocstatus is not None:
+                        if preprocstatus != 0:
+                            os.remove(RUNNING_FILE)
+                        return
                     if CheckForExit():
                         return
                     # The following prevents checking the particles.star file too often
