@@ -1,0 +1,161 @@
+import json
+import os
+from typing import List, Optional
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Load
+from sqlalchemy.orm.session import sessionmaker
+
+from relion.zocalo.alchemy import ClusterJobInfo, RelionJobInfo, RelionPipelineInfo
+
+
+def _get_sessionmaker(
+    credentials_file: Optional[str] = None,
+) -> sessionmaker:
+    credentials = credentials_file or os.getenv("CLUSTER_DB_CREDENTIALS")
+    if not credentials:
+        raise AttributeError("No credentials file specified")
+    with open(credentials, "r") as f:
+        creds = json.load(f)
+    sqlalchemy_url = "mysql+mysqlconnector://{user}:{passwd}@{host}:{port}/{db}".format(
+        **creds
+    )
+    _sessionmaker = sessionmaker(
+        bind=create_engine(sqlalchemy_url, connect_args={"use_pure": True})
+    )
+    return _sessionmaker
+
+
+def get_all_usage_data(
+    session_maker: Optional[sessionmaker] = None,
+) -> pd.DataFrame:
+    if session_maker:
+        _sessionmaker: sessionmaker = session_maker
+    else:
+        _sessionmaker: sessionmaker = _get_sessionmaker()
+    with _sessionmaker() as session:
+        query = (
+            session.query(RelionJobInfo, RelionPipelineInfo, ClusterJobInfo)
+            .join(ClusterJobInfo, ClusterJobInfo.cluster_id == RelionJobInfo.cluster_id)
+            .join(
+                RelionPipelineInfo,
+                RelionPipelineInfo.pipeline_id == RelionJobInfo.pipeline_id,
+            )
+        )
+        df = pd.read_sql(query.statement, session.bind)
+    df["job_time"] = (df["end_time"] - df["relion_start_time"]).dt.total_seconds()
+    df["run_time"] = (df["end_time"] - df["start_time"]).dt.total_seconds()
+    df["queue_time"] = df["job_time"] - df["run_time"]
+    df["pipeline_id"] = df["pipeline_id"].astype(str)
+    preproc = (
+        "MotionCorr",
+        "CtfFind",
+        "Icebreaker_F",
+        "Icebreaker_G",
+        "crYOLO_AutoPick",
+        "AutoPick",
+        "Extract",
+    )
+
+    def schedule(row):
+        if row["job_name"] in preproc:
+            return "Preprocessing"
+        else:
+            return row["job_name"]
+
+    df["schedule"] = df.apply(lambda row: schedule(row), axis=1)
+    return df
+
+
+def get_cluster_usage_df(
+    columns: List[str],
+    values: Optional[dict] = None,
+    session_maker: Optional[sessionmaker] = None,
+) -> pd.DataFrame:
+    if session_maker:
+        _sessionmaker: sessionmaker = session_maker
+    else:
+        _sessionmaker: sessionmaker = _get_sessionmaker()
+    values = values or {}
+    pipeline_columns = [
+        c for c in columns if c in RelionPipelineInfo.__table__.columns.keys()
+    ]
+    pipeline_values = {
+        k: v
+        for k, v in values.items()
+        if k in RelionPipelineInfo.__table__.columns.keys()
+    }
+    job_columns = [c for c in columns if c in RelionJobInfo.__table__.columns.keys()]
+    job_values = {
+        k: v for k, v in values.items() if k in RelionJobInfo.__table__.columns.keys()
+    }
+    cluster_columns = [
+        c for c in columns if c in ClusterJobInfo.__table__.columns.keys()
+    ]
+    cluster_values = {
+        k: v for k, v in values.items() if k in ClusterJobInfo.__table__.columns.keys()
+    }
+    extras = [
+        c
+        for c, p in zip(
+            ["cluster_id", "pipeline_id"], [cluster_columns, pipeline_columns]
+        )
+        if p
+    ]
+    tables = [
+        c
+        for c, p in zip(
+            [RelionJobInfo, RelionPipelineInfo, ClusterJobInfo],
+            [True, pipeline_columns, cluster_columns],
+        )
+        if p
+    ]
+    filters = (
+        [getattr(RelionJobInfo, k) == v for k, v in job_values.items()]
+        + [getattr(ClusterJobInfo, k) == v for k, v in cluster_values.items()]
+        + [getattr(RelionPipelineInfo, k) == v for k, v in pipeline_values.items()]
+    )
+    with _sessionmaker() as session:
+        query = session.query(*tables).options(
+            Load(RelionJobInfo).load_only(*(job_columns + extras))
+        )
+        if pipeline_columns:
+            query = query.options(
+                Load(RelionPipelineInfo).load_only(
+                    *(pipeline_columns + ["pipeline_id"])
+                ),
+            ).join(
+                RelionPipelineInfo,
+                RelionPipelineInfo.pipeline_id == RelionJobInfo.pipeline_id,
+            )
+        if cluster_columns:
+            query = query.options(
+                Load(ClusterJobInfo).load_only(*(cluster_columns + ["cluster_id"])),
+            ).join(
+                ClusterJobInfo,
+                ClusterJobInfo.cluster_id == RelionJobInfo.cluster_id,
+            )
+
+        if values:
+            query = query.filter(*filters)
+
+        df = pd.read_sql(query.statement, session.bind)
+    return df
+
+
+def make_bar_chart(
+    x_key: str,
+    y_key: str,
+    df: pd.DataFrame,
+    x_label: Optional[str] = None,
+    y_label: Optional[str] = None,
+):
+    x_vals = list(df[x_key].unique())
+    y_vals = [df[df[x_key] == pid][y_key].sum() for pid in x_vals]
+    x = range(1, len(x_vals) + 1)
+    fig, ax = plt.subplots()
+    ax.bar(x, y_vals)
+    ax.set_xticklabels(x_vals)
+    plt.show()
