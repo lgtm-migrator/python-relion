@@ -4,7 +4,7 @@ from relion.pipeline.graph import Graph, HyperEdge, Vertex
 
 
 def test_a_simple_graph_run():
-    def _a() -> dict:
+    def _a(*args) -> dict:
         return {"a": 1, "b": 2}
 
     def _b(input: dict) -> dict:
@@ -17,9 +17,11 @@ def test_a_simple_graph_run():
     v = Vertex(vtp, operation=_b)
     o >> e
     e >> v
+    assert o._next == [e]
     g = Graph(o)
     g()
-    g.wait()
+    results = g.wait()
+    assert [{"res": 3}] in results
 
 
 def test_a_graph_with_two_inputs_on_hyperedge():
