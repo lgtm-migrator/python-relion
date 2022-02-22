@@ -20,3 +20,32 @@ def test_a_simple_graph_run():
     g = Graph(o)
     g()
     g.wait()
+
+
+def test_a_graph_with_two_inputs_on_hyperedge():
+    def _a() -> dict:
+        return {"a": 1}
+
+    def _b() -> dict:
+        return {"b": 2}
+
+    def _c(input: dict) -> dict:
+        return {"res": input["a"] + input["b"]}
+
+    vtp = ThreadPoolExecutor(max_workers=1)
+    etp = ThreadPoolExecutor(max_workers=1)
+    o = Vertex(vtp)
+    eo = HyperEdge(etp)
+    o_01 = Vertex(vtp, operation=_a)
+    o_02 = Vertex(vtp, operation=_b)
+    e = HyperEdge(etp)
+    v = Vertex(vtp, operation=_c)
+    o >> eo
+    eo >> o_01
+    eo >> o_02
+    o_01 >> e
+    o_02 >> e
+    e >> v
+    g = Graph(o)
+    g()
+    g.wait()
