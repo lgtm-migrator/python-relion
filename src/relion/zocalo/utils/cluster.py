@@ -191,6 +191,7 @@ def make_bar_chart(
     plt.rcParams.update(
         {"text.usetex": True, "font.family": "serif", "font.serif": ["Computer Modern"]}
     )
+    plt.figure(figsize=((4.5, 4.5 / 1.618)))
 
     fig, ax = plt.subplots()
     if group:
