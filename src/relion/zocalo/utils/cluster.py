@@ -10,6 +10,21 @@ from sqlalchemy.orm.session import sessionmaker
 
 from relion.zocalo.alchemy import ClusterJobInfo, RelionJobInfo, RelionPipelineInfo
 
+_jobs_of_interest = [
+    "MotionCorr",
+    "Icebreaker_G",
+    "Icebreaker_F",
+    "CtfFind",
+    "AutoPick",
+    "Extract",
+    "Icebreaker_group",
+    "Class2D",
+    "InitialModel",
+    "Class3D",
+    "crYOLO_AutoPick",
+    "Icebreaker_5fig",
+]
+
 
 def _get_sessionmaker(
     credentials_file: Optional[str] = None,
@@ -151,13 +166,48 @@ def make_bar_chart(
     df: pd.DataFrame,
     x_label: Optional[str] = None,
     y_label: Optional[str] = None,
+    count: bool = False,
+    restrict_job_types: List[str] = _jobs_of_interest,
+    group: Optional[List[List[str]]] = None,
+    save_to: str = "",
 ):
     x_vals = list(df[x_key].unique())
-    y_vals = [df[df[x_key] == pid][y_key].sum() for pid in x_vals]
+    if x_key == "job_name":
+        x_vals = [_ for _ in x_vals if _ in restrict_job_types]
+    if group:
+        y_vals_group = []
+        for xkg in group:
+            if count:
+                y_vals_group.append([len(df[df[x_key] == pid]) for pid in xkg])
+            else:
+                y_vals_group.append([df[df[x_key] == pid][y_key].sum() for pid in xkg])
+    else:
+        if count:
+            y_vals = [len(df[df[x_key] == pid]) for pid in x_vals]
+        else:
+            y_vals = [df[df[x_key] == pid][y_key].sum() for pid in x_vals]
     x = range(1, len(x_vals) + 1)
+
+    plt.rcParams.update(
+        {"text.usetex": True, "font.family": "serif", "font.serif": ["Computer Modern"]}
+    )
+
     fig, ax = plt.subplots()
-    ax.bar(x, y_vals)
-    ax.set_xticklabels(x_vals, rotation="330")
+    if group:
+        for _y_vals, _group_vals in zip(y_vals_group, group):
+            _x = [x_vals.index(_g) + 1 for _g in _group_vals]
+            ax.bar(_x, _y_vals)
+    else:
+        ax.bar(x, y_vals)
+    ax.set_xticks(x)
+    ax.set_xticklabels(
+        [t.replace("_", r"\_") for t in x_vals], rotation="330", ha="left"
+    )
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    plt.tight_layout()
+    if save_to:
+        plt.savefig(save_to)
     plt.show()
 
 
