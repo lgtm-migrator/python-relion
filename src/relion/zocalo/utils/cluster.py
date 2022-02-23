@@ -157,5 +157,9 @@ def make_bar_chart(
     x = range(1, len(x_vals) + 1)
     fig, ax = plt.subplots()
     ax.bar(x, y_vals)
-    ax.set_xticklabels(x_vals)
+    ax.set_xticklabels(x_vals, rotation="330")
     plt.show()
+
+
+def max_from(key: str, df: pd.DataFrame):
+    return df[key].max()
