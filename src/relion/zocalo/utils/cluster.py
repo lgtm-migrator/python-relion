@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -160,6 +160,20 @@ def get_cluster_usage_df(
     return df
 
 
+def make_histogram(key: str, df: pd.DataFrame, save_to: str = ""):
+    data = df[key]
+    plt.rcParams.update(
+        {"text.usetex": True, "font.family": "serif", "font.serif": ["Computer Modern"]}
+    )
+    plt.figure(figsize=((4.5, 4.5 / 1.618)))
+
+    fig, ax = plt.subplots()
+    ax.hist(data)
+    if save_to:
+        plt.savefig(save_to)
+    plt.show()
+
+
 def make_bar_chart(
     x_key: str,
     y_key: str,
@@ -212,5 +226,9 @@ def make_bar_chart(
     plt.show()
 
 
-def max_from(key: str, df: pd.DataFrame):
+def max_of(key: str, df: pd.DataFrame) -> Any:
     return df[key].max()
+
+
+def min_of(key: str, df: pd.DataFrame) -> Any:
+    return df[key].min()
