@@ -1,6 +1,9 @@
+import functools
 import json
 import os
-from typing import Any, List, Optional
+from itertools import chain
+from operator import and_
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -160,15 +163,142 @@ def get_cluster_usage_df(
     return df
 
 
-def make_histogram(key: str, df: pd.DataFrame, save_to: str = ""):
-    data = df[key]
+def make_plot(
+    x_key: str,
+    y_key: str,
+    df: pd.DataFrame,
+    allow: Optional[Dict[str, Any]] = None,
+    errors: bool = False,
+    x_label: Optional[str] = None,
+    y_label: Optional[str] = None,
+    save_to: str = "",
+):
+    x_vals = list(df[x_key].unique())
+    if allow:
+        conditions = [df[k] == v for k, v in allow.items()]
+    else:
+        conditions = []
+    y_vals = [
+        df[functools.reduce(and_, conditions + [df[x_key] == x])][y_key].mean()
+        for x in x_vals
+    ]
+    if errors:
+        y_errs = [
+            df[functools.reduce(and_, conditions + [df[x_key] == x])][y_key].std()
+            for x in x_vals
+        ]
     plt.rcParams.update(
-        {"text.usetex": True, "font.family": "serif", "font.serif": ["Computer Modern"]}
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.serif": ["Computer Modern"],
+            "font.size": 14,
+        }
     )
     plt.figure(figsize=((4.5, 4.5 / 1.618)))
 
     fig, ax = plt.subplots()
-    ax.hist(data)
+    if errors:
+        ax.errorbar(x_vals, y_vals, yerr=y_errs, fmt="o", mfc="none")
+    else:
+        ax.plot(x_vals, y_vals, "o")
+    ax.tick_params(axis="both", direction="in", top=True, right=True)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    plt.tight_layout()
+    if save_to:
+        plt.savefig(save_to)
+    plt.show()
+
+
+def make_pie_chart(
+    label_key: str,
+    key: str,
+    df: pd.DataFrame,
+    allow: Optional[List[Any]] = None,
+    save_to: str = "",
+):
+    vals = list(df[label_key].unique())
+    vals = [v for v in vals if v in allow]
+    sizes = [df[df[label_key] == pid][key].sum() for pid in vals]
+    _val_sizes = {k: v for k, v in zip(vals, sizes)}
+    sizes.sort()
+    vals.sort(key=lambda e: _val_sizes[e])
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.serif": ["Computer Modern"],
+            "font.size": 14,
+        }
+    )
+    plt.figure(figsize=((4.5, 4.5 / 1.618)))
+
+    fig, ax = plt.subplots()
+    ax.pie(
+        sizes,
+        labels=[t.replace("_", r"\_") for t in vals],
+        autopct="%1.1f%%",
+        shadow=True,
+    )
+    ax.axis("equal")
+    plt.tight_layout()
+    if save_to:
+        plt.savefig(save_to)
+    plt.show()
+
+
+def make_histogram(
+    key: str,
+    df: pd.DataFrame,
+    key_filter: Optional[Dict[str, List[Any]]] = None,
+    split_filter_key: str = "",
+    x_label: Optional[str] = None,
+    y_label: Optional[str] = None,
+    hist_range: Optional[Tuple[float, float]] = None,
+    save_to: str = "",
+):
+    legend_labels = []
+    if key_filter:
+        data = []
+        if split_filter_key:
+            conditions = [
+                df[k].isin(v) for k, v in key_filter.items() if k != split_filter_key
+            ]
+            if conditions:
+                _data = df[functools.reduce(and_, conditions)]
+            else:
+                _data = df
+            data.extend(
+                _data[_data[split_filter_key] == val][key]
+                for val in key_filter[split_filter_key]
+            )
+            legend_labels.extend(key_filter[split_filter_key])
+        else:
+            for k, v in key_filter.items():
+                data.extend(chain.from_iterable(df[df[k] == val][key] for val in v))
+    else:
+        data = df[key]
+
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.serif": ["Computer Modern"],
+            "font.size": 14,
+        }
+    )
+    plt.figure(figsize=((4.5, 4.5 / 1.618)))
+
+    fig, ax = plt.subplots()
+    if legend_labels:
+        ax.hist(data, range=hist_range, label=legend_labels)
+        ax.legend(frameon=False)
+    else:
+        ax.hist(data, range=hist_range)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    plt.tight_layout()
     if save_to:
         plt.savefig(save_to)
     plt.show()
@@ -203,7 +333,12 @@ def make_bar_chart(
     x = range(1, len(x_vals) + 1)
 
     plt.rcParams.update(
-        {"text.usetex": True, "font.family": "serif", "font.serif": ["Computer Modern"]}
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.serif": ["Computer Modern"],
+            "font.size": 14,
+        }
     )
     plt.figure(figsize=((4.5, 4.5 / 1.618)))
 
@@ -232,3 +367,7 @@ def max_of(key: str, df: pd.DataFrame) -> Any:
 
 def min_of(key: str, df: pd.DataFrame) -> Any:
     return df[key].min()
+
+
+def options(key: str, df: pd.DataFrame) -> List[Any]:
+    return list(df[key].unique())
