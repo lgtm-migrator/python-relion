@@ -61,7 +61,11 @@ class HyperEdge(GraphElement):
             if not self._futures:
                 super().__call__(**kwargs)
 
-    def _f(self, gatherer: Optional[Dict[str, List[dict]]] = None):
+    def _f(
+        self,
+        gatherer: Optional[Dict[str, List[dict]]] = None,
+        context: Optional[GraphRunner] = None,
+    ):
         _kwargs = {}
         for q in self._in:
             pd = q.get()
@@ -73,7 +77,7 @@ class HyperEdge(GraphElement):
         for oq in self._out.values():
             oq.put(_kwargs)
         for n in self._next:
-            n(queue=self._out[n.name], gatherer=gatherer)
+            n(queue=self._out[n.name], gatherer=gatherer, context=context)
 
 
 class HyperEdgeBundle(GraphElement):
@@ -87,7 +91,11 @@ class HyperEdgeBundle(GraphElement):
         super().__init__(thread_pool, name=name, operation=operation)
         self._generator_key = generator_key
 
-    def _f(self, gatherer: Optional[Dict[str, List[dict]]] = None):
+    def _f(
+        self,
+        gatherer: Optional[Dict[str, List[dict]]] = None,
+        context: Optional[GraphRunner] = None,
+    ):
         _kwargs = {}
         for q in self._in:
             pd = q.get()
@@ -101,7 +109,7 @@ class HyperEdgeBundle(GraphElement):
             for oq in self._out.values():
                 oq.put({**_kwargs, self._generator_key: e})
             for n in self._next:
-                n(queue=self._out[n.name], gatherer=gatherer)
+                n(queue=self._out[n.name], gatherer=gatherer, context=context)
 
 
 class Vertex(GraphElement):
@@ -109,6 +117,7 @@ class Vertex(GraphElement):
         self,
         queue: Optional[Queue] = None,
         gatherer: Optional[Dict[str, List[dict]]] = None,
+        context: Optional[GraphRunner] = None,
     ) -> dict:
         if queue:
             if queue not in self._in:
@@ -120,7 +129,7 @@ class Vertex(GraphElement):
         for oq in self._out.values():
             oq.put(res)
         for n in self._next:
-            n(gatherer=gatherer)
+            n(gatherer=gatherer, context=context)
         if gatherer is not None:
             try:
                 gatherer[self.name].append(res)
@@ -145,6 +154,7 @@ class DecisionVertex(GraphElement):
         self,
         queue: Optional[Queue] = None,
         gatherer: Optional[Dict[str, List[dict]]] = None,
+        context: Optional[GraphRunner] = None,
     ):
         if queue:
             if queue not in self._in:
@@ -157,7 +167,7 @@ class DecisionVertex(GraphElement):
             oq.put({})
         if res:
             for n in self._next:
-                n(gatherer=gatherer)
+                n(gatherer=gatherer, context=context)
         else:
             _remove_futures(self)
 
@@ -202,8 +212,9 @@ class TerminalVertex(GraphElement):
 
 
 class Graph:
-    def __init__(self, origin: GraphElement):
+    def __init__(self, origin: GraphElement, context: Optional[GraphRunner] = None):
         self._origin = origin
+        self._context = context
         self._elements: List[GraphElement] = self._generate_element_list()
         tpe = ThreadPoolExecutor(max_workers=1)
         self._terminal: TerminalVertex = TerminalVertex(tpe)
@@ -217,7 +228,7 @@ class Graph:
                 self._terminal._out.update({he_out.name: q})
 
     def __call__(self):
-        self._origin(gatherer=self._gatherer)
+        self._origin(gatherer=self._gatherer, context=self._context)
 
     def _generate_element_list(
         self,
@@ -243,3 +254,28 @@ class Graph:
             for fut in el._futures:
                 fut.result()
         return self._gatherer
+
+
+class GraphRunner:
+    def __init__(self, max_workers: int = 1):
+        self._graphs: List[Graph] = []
+        self._max_workers = max_workers
+        self._thread_pool_executor: Optional[ThreadPoolExecutor] = None
+
+    def spawn(self, origin: Vertex):
+        if not self._thread_pool_executor:
+            raise ValueError(
+                "The GraphRunner ThreadPoolExecutor is not initialised. Perhaps a missing GraphRunner context"
+            )
+        g = Graph(origin, context=self)
+        self._graphs.append(g)
+        self._thread_pool_executor.submit(g)
+
+    def __enter__(self):
+        self._thread_pool_executor = ThreadPoolExecutor(max_workers=self._max_workers)
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        total_results = {}
+        for g in self._graphs:
+            total_results.update(g.wait())
+        self._thread_pool_executor.shutdown(wait=True)
