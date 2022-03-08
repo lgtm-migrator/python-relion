@@ -4,7 +4,7 @@ import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from queue import Queue
 from threading import RLock
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 def _absorb(**kwargs):
@@ -63,14 +63,14 @@ class HyperEdge(GraphElement):
                     f"Only dictionaries may be placed on Graph queues: found {pd} of type {type(pd)}"
                 )
             _kwargs.update(pd)
-        for oq in self._out:
+        for oq in self._out.values():
             oq.put(_kwargs)
         for n in self._next:
             n(queue=self._out[n.name])
 
 
 class Vertex(GraphElement):
-    def _f(self, queue: Optional[Queue] = None):
+    def _f(self, queue: Optional[Queue] = None) -> Any:
         if queue:
             if queue not in self._in:
                 raise ValueError
@@ -82,12 +82,44 @@ class Vertex(GraphElement):
             oq.put(res)
         for n in self._next:
             n()
+        return res
+
+
+class TerminalVertex(GraphElement):
+    _seen_queues: List[Queue] = []
+
+    def _f(self, queue: Optional[Queue] = None):
+        if queue:
+            if queue not in self._in:
+                raise ValueError
+            if queue in self._seen_queues:
+                raise ValueError(f"Queue {queue} has already been seen by {self}")
+            queue.get()
+            self._seen_queues.append(queue)
+            if len(self._seen_queues) == len(self._in):
+                for oq in self._out.values():
+                    oq.put(True)
+
+    def wait(self) -> bool:
+        completed: List[bool] = []
+        for oq in self._out.values():
+            completed.append(oq.get())
+        return all(completed)
 
 
 class Graph:
     def __init__(self, origin: GraphElement):
         self._origin = origin
         self._elements: List[GraphElement] = self._generate_element_list()
+        tpe = ThreadPoolExecutor(max_workers=1)
+        self._terminal: TerminalVertex = TerminalVertex(tpe)
+        for e in self._elements:
+            if not e._out:
+                he_out = HyperEdge(tpe)
+                e >> he_out
+                he_out >> self._terminal
+                q = Queue()
+                self._terminal._out.update({he_out.name: q})
 
     def __call__(self):
         self._origin()
@@ -108,6 +140,9 @@ class Graph:
         return el
 
     def wait(self) -> List[List[dict]]:
+        completed = self._terminal.wait()
+        if not completed:
+            raise ValueError(f"Terminal for {self} did not complete correctly")
         wait_results = []
         for e in self._elements:
             element_results = []
