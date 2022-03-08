@@ -141,14 +141,6 @@ class DecisionVertex(GraphElement):
 
         super().__init__(thread_pool, name=name, operation=operation or _always_false)
 
-    @classmethod
-    def _remove_futures(cl: DecisionVertex):
-        for n in cl._next:
-            if isinstance(n, TerminalVertex):
-                cl._out[n.name].put({})
-                continue
-            cl._remove_futures(n)
-
     def _f(
         self,
         queue: Optional[Queue] = None,
@@ -167,7 +159,17 @@ class DecisionVertex(GraphElement):
             for n in self._next:
                 n(gatherer=gatherer)
         else:
-            self._remove_futures(self)
+            _remove_futures(self)
+
+
+def _remove_futures(dv: GraphElement):
+    for n in dv._next:
+        if isinstance(n, TerminalVertex):
+            dv._out[n.name].put({})
+            if not n._futures:
+                n(queue=dv._out[n.name])
+            continue
+        _remove_futures(n)
 
 
 class TerminalVertex(GraphElement):
