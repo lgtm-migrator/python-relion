@@ -4,11 +4,11 @@ import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from queue import Queue
 from threading import RLock
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
-def _absorb(**kwargs):
-    pass
+def _absorb(*args):
+    return {}
 
 
 class GraphElement:
@@ -16,11 +16,11 @@ class GraphElement:
         self,
         thread_pool: ThreadPoolExecutor,
         name: str = "",
-        operation: Optional[Callable[[dict], dict]] = None,
+        operation: Optional[Callable[[dict], Union[dict, bool]]] = None,
     ):
         self.name = name or str(uuid.uuid4())[:8]
         self._in: List[Queue] = []
-        self._out: Dict[Queue] = {}
+        self._out: Dict[str, Queue] = {}
         self._lock = RLock()
         self._operation = operation or _absorb
         self._next: List[GraphElement] = []
@@ -38,14 +38,15 @@ class GraphElement:
         other._connect_in(self)
 
     def __call__(self, **kwargs):
-        if kwargs:
-            fut = self._thread_pool.submit(self._f, **kwargs)
-        else:
-            try:
-                fut = self._thread_pool.submit(self._f)
-            except Exception as e:
-                print(f"exception raised {e}")
-        self._futures.append(fut)
+        with self._lock:
+            if kwargs:
+                fut = self._thread_pool.submit(self._f, **kwargs)
+            else:
+                try:
+                    fut = self._thread_pool.submit(self._f)
+                except Exception as e:
+                    print(f"exception raised {e}")
+            self._futures.append(fut)
 
     def _f(self, **kwargs):
         raise NotImplementedError(
@@ -54,6 +55,12 @@ class GraphElement:
 
 
 class HyperEdge(GraphElement):
+    # only run the HyperEdge if it hasn't been run before
+    def __call__(self, **kwargs):
+        with self._lock:
+            if not self._futures:
+                super().__call__(**kwargs)
+
     def _f(self, gatherer: Optional[Dict[str, List[dict]]] = None):
         _kwargs = {}
         for q in self._in:
@@ -67,6 +74,34 @@ class HyperEdge(GraphElement):
             oq.put(_kwargs)
         for n in self._next:
             n(queue=self._out[n.name], gatherer=gatherer)
+
+
+class HyperEdgeBundle(GraphElement):
+    def __init__(
+        self,
+        thread_pool: ThreadPoolExecutor,
+        generator_key: Any,
+        name: str = "",
+        operation: Optional[Callable[[dict], Union[dict, bool]]] = None,
+    ):
+        super().__init__(thread_pool, name=name, operation=operation)
+        self._generator_key = generator_key
+
+    def _f(self, gatherer: Optional[Dict[str, List[dict]]] = None):
+        _kwargs = {}
+        for q in self._in:
+            pd = q.get()
+            if not isinstance(pd, dict):
+                raise TypeError(
+                    f"Only dictionaries may be placed on Graph queues: found {pd} of type {type(pd)}"
+                )
+            _kwargs.update(pd)
+        edges = _kwargs.pop(self._generator_key)
+        for e in edges:
+            for oq in self._out.values():
+                oq.put({**_kwargs, self._generator_key: e})
+            for n in self._next:
+                n(queue=self._out[n.name], gatherer=gatherer)
 
 
 class Vertex(GraphElement):
@@ -94,8 +129,56 @@ class Vertex(GraphElement):
         return res
 
 
+class DecisionVertex(GraphElement):
+    def __init__(
+        self,
+        thread_pool: ThreadPoolExecutor,
+        name: str = "",
+        operation: Optional[Callable[[dict], bool]] = None,
+    ):
+        def _always_false(*args, **kwargs) -> bool:
+            return False
+
+        super().__init__(thread_pool, name=name, operation=operation or _always_false)
+
+    @classmethod
+    def _remove_futures(cl: DecisionVertex):
+        for n in cl._next:
+            if isinstance(n, TerminalVertex):
+                cl._out[n.name].put({})
+                continue
+            cl._remove_futures(n)
+
+    def _f(
+        self,
+        queue: Optional[Queue] = None,
+        gatherer: Optional[Dict[str, List[dict]]] = None,
+    ):
+        if queue:
+            if queue not in self._in:
+                raise ValueError
+            kwargs = queue.get()
+        else:
+            kwargs = {}
+        res = self._operation(kwargs)
+        for oq in self._out.values():
+            oq.put({})
+        if res:
+            for n in self._next:
+                n(gatherer=gatherer)
+        else:
+            self._remove_futures(self)
+
+
 class TerminalVertex(GraphElement):
-    _seen_queues: List[Queue] = []
+    def __init__(
+        self,
+        thread_pool: ThreadPoolExecutor,
+        name: str = "",
+        operation: Optional[Callable[[dict], Union[dict, bool]]] = None,
+    ):
+        super().__init__(thread_pool, name=name, operation=operation)
+        self._seen_queues: List[Queue] = []
 
     def _f(self, queue: Optional[Queue] = None, **kwargs):
         if queue:
@@ -143,6 +226,7 @@ class Graph:
             el = []
         if not element:
             element = self._origin
+            el = [self._origin]
         for n in element._next:
             if n not in el:
                 el.append(n)
@@ -153,4 +237,7 @@ class Graph:
         completed = self._terminal.wait()
         if not completed:
             raise ValueError(f"Terminal for {self} did not complete correctly")
+        for el in self._elements:
+            for fut in el._futures:
+                fut.result()
         return self._gatherer
